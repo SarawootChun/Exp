@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{font-family:'Sarabun',sans-serif;box-sizing:border-box}
@@ -37,8 +38,8 @@
 .card{background:#fff;border-radius:1rem;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #f3f4f6}
 #lb{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:9990;display:none;align-items:center;justify-content:center}
 #lb img{max-width:96vw;max-height:90vh;border-radius:.8rem}
-#toast{position:fixed;bottom:5.5rem;left:50%;z-index:9999;min-width:14rem;transform:translateX(-50%) translateY(6rem);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
-#toast.show{transform:translateX(-50%) translateY(0)}
+#toast{position:fixed;bottom:5.5rem;right:1rem;z-index:9999;min-width:12rem;max-width:calc(100vw - 2rem);transform:translateY(8rem);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+#toast.show{transform:translateY(0)}
 .fdd-wrap{position:relative;display:inline-block}
 .fdd-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.42rem .9rem;border-radius:.75rem;font-size:.78rem;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;background:#f9fafb;color:#374151;transition:all .15s;white-space:nowrap;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .fdd-btn:hover{border-color:#93c5fd;color:#1d4ed8;background:#eff6ff}
@@ -440,8 +441,11 @@ async function loadGroups(){
   _groups=_snapToArr(s).sort((a,b)=>(a.name||'').localeCompare(b.name||'','th'));
 }
 async function loadReports(){
-  const s=await db.ref('reports').orderByChild('submitted_at').once('value');
-  _reports=_snapToArr(s).reverse().slice(0,500);
+  const s=await db.ref('reports').once('value');
+  const arr=_snapToArr(s);
+  // sort newest first client-side (avoids RTDB index requirement)
+  arr.sort((a,b)=>(b.submitted_at||0)-(a.submitted_at||0));
+  _reports=arr.slice(0,500);
 }
 function calcStats(){
   _stats={
@@ -498,6 +502,7 @@ setInterval(updateClock,1000); updateClock();
 // ══════════════════════════════════════════
 const TITLES={user:'แจ้งสินค้าหมดอายุ',dashboard:'Admin Dashboard',settings:'ตั้งค่าระบบ'};
 function goTo(view){
+  localStorage.setItem('lastView',view);
   ['user','dashboard','settings'].forEach(v=>{
     document.getElementById('v-'+v).style.display=v===view?'block':'none';
     document.getElementById('nb-'+v).classList.toggle('on',v===view);
@@ -775,20 +780,31 @@ async function uploadToStorage(dataURL,_path){
 // ══════════════════════════════════════════
 // DOWNLOAD HELPERS
 // ══════════════════════════════════════════
-async function downloadComposite(reportId){
+async function downloadComposite(reportId,fmt='jpg'){
   const rep=_reports.find(r=>r.id===reportId); if(!rep) return;
   const safeName=(rep.branch_name||'report').replace(/\s+/g,'_');
-  const src=rep.composite_img||null;
-  if(src){
-    const a=document.createElement('a'); a.href=src;
-    a.download=`claim_${safeName}.jpg`; a.click();
-    toast('ดาวน์โหลดสำเร็จ ✅'); return;
+  let dataURL=rep.composite_img||_compCache[reportId]||null;
+  if(!dataURL){
+    toast('กำลังสร้างรูปรวม...');
+    const srcs=[rep.image_front,rep.image_overview,rep.image_expiry].filter(Boolean);
+    dataURL=await buildComposite(srcs,rep.note||'',rep.quantity??'');
+    if(!dataURL){toast('ไม่มีรูปภาพ','red');return;}
+    _compCache[reportId]=dataURL;
   }
-  toast('กำลังสร้างรูปรวม...');
-  const srcs=[rep.image_front,rep.image_overview,rep.image_expiry].filter(Boolean);
-  const dataURL=await buildComposite(srcs,rep.note||'',rep.quantity??'');
-  if(!dataURL){toast('ไม่มีรูปภาพ','red');return;}
-  const a=document.createElement('a'); a.href=dataURL; a.download=`claim_${safeName}.jpg`; a.click();
+  if(fmt==='pdf'){
+    const img=new Image(); img.src=dataURL;
+    await new Promise(r=>{img.onload=r;img.onerror=r;});
+    const iw=img.naturalWidth||600, ih=img.naturalHeight||400;
+    const pxMm=0.264583; // 1px = 0.264583mm at 96dpi
+    const pw=iw*pxMm, ph=ih*pxMm;
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:iw>=ih?'landscape':'portrait',unit:'mm',format:[pw,ph]});
+    pdf.addImage(dataURL,'JPEG',0,0,pw,ph,undefined,'FAST');
+    pdf.save(`claim_${safeName}.pdf`);
+  } else {
+    const a=document.createElement('a'); a.href=dataURL;
+    a.download=`claim_${safeName}.jpg`; a.click();
+  }
   toast('ดาวน์โหลดสำเร็จ ✅');
 }
 async function _batchDownload(reports){
@@ -855,7 +871,7 @@ async function submitReport(){
     ]);
     const branch=_branches.find(b=>b.id===bId);
     const brand=_brands.find(b=>b.id===brId);
-    await db.ref('reports/'+rid).set({
+    const reportData={
       branch_id:bId, branch_name:branch?.name||'',
       brand_id:brId, brand_name:brand?.name||'',
       reporter_name:reporter||null,
@@ -867,7 +883,11 @@ async function submitReport(){
       claim_status:0, claimed_at:null, claimed_by:null,
       sent_claim:0, sent_at:null,
       submitted_at:TS(),
-    });
+    };
+    await db.ref('reports/'+rid).set(reportData);
+    // update local cache immediately so admin dashboard reflects this report
+    _reports.unshift({id:rid,...reportData,submitted_at:Date.now()});
+    if(isAdmin){calcStats();updateStats();}
     localStorage.setItem('reporterName',reporter);
     document.getElementById('successMsg').style.display='block';
     document.getElementById('successMsg').scrollIntoView({behavior:'smooth'});
@@ -1023,10 +1043,16 @@ function renderReports(){
         </div>
       </div>
       <div id="comp-${rep.id}" style="width:100%;background:#1e293b;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem;min-height:72px">⏳ กำลังโหลดรูป...</div>
-      <button onclick="downloadComposite('${rep.id}')"
-        style="width:100%;padding:.5rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.8rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
-        📥 ดาวน์โหลดรูปรวม (สำหรับแจ้งเคลม)
-      </button>
+      <div style="display:flex;gap:.4rem">
+        <button onclick="downloadComposite('${rep.id}','jpg')"
+          style="flex:1;padding:.5rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.8rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
+          🖼 JPG
+        </button>
+        <button onclick="downloadComposite('${rep.id}','pdf')"
+          style="flex:1;padding:.5rem;border-radius:.7rem;background:#fff0f0;color:#dc2626;font-size:.8rem;font-weight:700;border:1.5px solid #fca5a5;cursor:pointer">
+          📄 PDF
+        </button>
+      </div>
       ${(rep.quantity||rep.note)?`<div style="background:#f9fafb;border-radius:.6rem;padding:.4rem .7rem;display:flex;flex-wrap:wrap;gap:.35rem">${rep.quantity?`<span style="font-size:.78rem;color:#1d4ed8;font-weight:700">📦 ${rep.quantity} ชิ้น</span>`:''}${rep.note?`<span style="font-size:.78rem;color:#6b7280">📝 ${rep.note}</span>`:''}</div>`:''}
       <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f3f4f6;padding-top:.5rem">
         <div>${clB}${rep.claimed_at?`<p style="font-size:.7rem;color:#9ca3af;margin-top:.1rem">เคลม: ${fmtDate(rep.claimed_at)}</p>`:''}</div>
@@ -1353,6 +1379,9 @@ async function init(){
   await seedIfEmpty();
   await Promise.all([loadAll(), tryRestoreSession()]);
   populateFormSelects();
+  // restore last viewed page (dashboard/settings stay if already logged in)
+  const lastView=localStorage.getItem('lastView')||'user';
+  if(lastView!=='user') goTo(lastView);
 }
 init();
 </script>
