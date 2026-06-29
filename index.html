@@ -174,7 +174,7 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
       </div>
     </div>
     <div>
-      <label class="block text-xs font-semibold text-gray-500 mb-1.5">📦 จำนวนสินค้า (ชิ้น)</label>
+      <label class="block text-xs font-semibold text-gray-500 mb-1.5">📦 จำนวนสินค้า (ชิ้น) <span style="color:#ef4444">*</span></label>
       <input id="qtyInp" type="number" min="1" placeholder="ระบุจำนวน เช่น 12"
         class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50" style="outline:none">
     </div>
@@ -410,6 +410,7 @@ const TS = ()=>firebase.database.ServerValue.TIMESTAMP;
 let _branches=[], _brands=[], _groups=[], _reports=[];
 let _stats={total:0,expired:0,claimed:0,unclaimed:0,sent_claim:0};
 let _adminSession=JSON.parse(localStorage.getItem('adminSession')||'null');
+const _compCache={}; // composite image cache — avoids rebuilding on re-render
 
 function _tsToStr(ts){
   if(!ts) return null;
@@ -718,13 +719,16 @@ function buildComposite(srcs,note='',qty=''){
   return new Promise(res=>{
     const valid=srcs.filter(Boolean);
     if(!valid.length){res(null);return;}
-    const SIZE=600,PAD=6,COLS=valid.length===1?1:valid.length===2?2:3;
-    const cw=SIZE,ch=SIZE+(note||qty?64:0);
+    const PAD=6,COLS=valid.length===1?1:valid.length===2?2:3;
+    const cw=600;
+    // Height: taller for single image (closer to natural photo ratio), shorter for grids
+    const imgH=valid.length===1?480:valid.length===2?380:310;
+    const ch=imgH+(note||qty?64:0);
     const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
     const ctx=cv.getContext('2d');
     ctx.fillStyle='#1e293b'; ctx.fillRect(0,0,cw,ch);
     const cellW=Math.floor((cw-PAD*(COLS+1))/COLS);
-    const cellH=SIZE-PAD*2;
+    const cellH=imgH-PAD*2;
     let loaded=0;
     const imgs=valid.map(src=>{
       const img=new Image(); img.crossOrigin='anonymous';
@@ -733,19 +737,27 @@ function buildComposite(srcs,note='',qty=''){
         if(loaded===valid.length){
           valid.forEach((s,i)=>{
             const x=PAD+(cellW+PAD)*i,y=PAD;
+            // draw image with contain (letterbox) so full photo is visible
+            const scaleX=cellW/imgs[i].naturalWidth;
+            const scaleY=cellH/imgs[i].naturalHeight;
+            const scale=Math.min(scaleX,scaleY);
+            const dw=imgs[i].naturalWidth*scale;
+            const dh=imgs[i].naturalHeight*scale;
+            const dx=x+(cellW-dw)/2;
+            const dy=y+(cellH-dh)/2;
             ctx.save(); ctx.beginPath(); ctx.roundRect(x,y,cellW,cellH,10); ctx.clip();
-            ctx.drawImage(imgs[i],x,y,cellW,cellH);
+            ctx.drawImage(imgs[i],dx,dy,dw,dh);
             ctx.restore();
           });
           if(note||qty){
             ctx.fillStyle='#0f172a';
-            ctx.fillRect(0,SIZE,cw,ch-SIZE);
+            ctx.fillRect(0,imgH,cw,ch-imgH);
             ctx.fillStyle='#fff'; ctx.font='bold 22px Sarabun,sans-serif';
             let txt='';
             if(qty) txt+=`📦 จำนวน ${qty} ชิ้น`;
             if(qty&&note) txt+='  ';
             if(note) txt+=`📝 ${note}`;
-            ctx.fillText(txt,PAD*2,SIZE+38,cw-PAD*4);
+            ctx.fillText(txt,PAD*2,imgH+38,cw-PAD*4);
           }
           res(cv.toDataURL('image/jpeg',0.70));
         }
@@ -824,6 +836,7 @@ async function submitReport(){
   if(!reporter) return toast('กรุณาระบุชื่อผู้รายงาน','red');
   if(!bId)      return toast('กรุณาเลือกสาขา','red');
   if(!brId)     return toast('กรุณาเลือกแบรนด์','red');
+  if(!qty)      return toast('กรุณาระบุจำนวนสินค้า','red');
   if(!m)        return toast('กรุณาเลือกเดือนหมดอายุ','red');
   if(!y)        return toast('กรุณาเลือกปีหมดอายุ','red');
   if(!imgData.i1&&!imgData.i2&&!imgData.i3) return toast('กรุณาอัพโหลดรูปภาพอย่างน้อย 1 รูป','red');
@@ -1009,7 +1022,7 @@ function renderReports(){
           <span style="font-size:.72rem;color:#9ca3af">${expLabel}</span>
         </div>
       </div>
-      <div id="comp-${rep.id}" style="width:100%;aspect-ratio:1/1;background:#f1f5f9;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem">⏳ กำลังโหลดรูป...</div>
+      <div id="comp-${rep.id}" style="width:100%;background:#1e293b;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem;min-height:72px">⏳ กำลังโหลดรูป...</div>
       <button onclick="downloadComposite('${rep.id}')"
         style="width:100%;padding:.5rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.8rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
         📥 ดาวน์โหลดรูปรวม (สำหรับแจ้งเคลม)
@@ -1034,15 +1047,24 @@ function renderReports(){
     const compEl=document.getElementById(`comp-${rep.id}`);
     if(rep.composite_img){
       const url=rep.composite_img;
-      compEl.innerHTML=`<img src="${url}" onclick="openLB('${url}')" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" title="คลิกเพื่อขยาย" crossorigin="anonymous">`;
+      compEl.innerHTML=`<img src="${url}" onclick="openLB('${url}')" style="width:100%;height:auto;object-fit:contain;cursor:zoom-in;display:block" title="คลิกเพื่อขยาย" crossorigin="anonymous">`;
     } else {
       const urls=[rep.image_front,rep.image_overview,rep.image_expiry].filter(Boolean);
       if(!urls.length){compEl.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';}
-      else{buildComposite(urls,rep.note||'',rep.quantity??'').then(dataURL=>{
-        const el=document.getElementById(`comp-${rep.id}`); if(!el) return;
-        if(!dataURL){el.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';return;}
-        el.innerHTML=`<img src="${dataURL}" onclick="openLB('${dataURL}')" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" title="คลิกเพื่อขยาย">`;
-      });}
+      else{
+        const cacheKey=rep.id;
+        if(_compCache[cacheKey]){
+          const cached=_compCache[cacheKey];
+          compEl.innerHTML=`<img src="${cached}" onclick="openLB('${cached}')" style="width:100%;height:auto;object-fit:contain;cursor:zoom-in;display:block" title="คลิกเพื่อขยาย">`;
+        } else {
+          buildComposite(urls,rep.note||'',rep.quantity??'').then(dataURL=>{
+            const el=document.getElementById(`comp-${rep.id}`); if(!el) return;
+            if(!dataURL){el.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';return;}
+            _compCache[cacheKey]=dataURL;
+            el.innerHTML=`<img src="${dataURL}" onclick="openLB('${dataURL}')" style="width:100%;height:auto;object-fit:contain;cursor:zoom-in;display:block" title="คลิกเพื่อขยาย">`;
+          });
+        }
+      }
     }
   });
 }
@@ -1329,8 +1351,7 @@ function toast(msg,type='green'){
 // ══════════════════════════════════════════
 async function init(){
   await seedIfEmpty();
-  await loadAll();
-  await tryRestoreSession();
+  await Promise.all([loadAll(), tryRestoreSession()]);
   populateFormSelects();
 }
 init();
