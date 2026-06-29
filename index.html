@@ -297,6 +297,10 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
           <div id="fdd-brand" class="fdd-panel"></div>
         </div>
         <div class="fdd-wrap">
+          <button id="btn-group" class="fdd-btn" onclick="toggleFDD('fdd-group',event)">🗂️ <span id="lbl-group">กลุ่มแบรนด์</span> <span class="fdd-arrow">▾</span></button>
+          <div id="fdd-group" class="fdd-panel"></div>
+        </div>
+        <div class="fdd-wrap">
           <button id="btn-claim" class="fdd-btn" onclick="toggleFDD('fdd-claim',event)">📋 <span id="lbl-claim">สถานะเคลม</span> <span class="fdd-arrow">▾</span></button>
           <div id="fdd-claim" class="fdd-panel"></div>
         </div>
@@ -489,7 +493,7 @@ async function seedIfEmpty(){
 // ══════════════════════════════════════════
 let isAdmin=false, isOwner=false;
 let imgData={i1:null,i2:null,i3:null};
-let chipBranches=new Set(), chipBrands=new Set(), chipClaim='', chipExp='';
+let chipBranches=new Set(), chipBrands=new Set(), chipGroups=new Set(), chipClaim='', chipExp='';
 
 // ══════════════════════════════════════════
 // CLOCK
@@ -732,56 +736,103 @@ async function handleImg(input,prevId,nameId,plusId,key){
 
 // ══════════════════════════════════════════
 // COMPOSITE IMAGE BUILDER
+// srcs = [front, overview, expiry] — null if not uploaded
+// Layout (3 images): expiry LEFT full-height | front TOP-RIGHT + overview BOTTOM-RIGHT
 // ══════════════════════════════════════════
-function buildComposite(srcs,note='',qty=''){
+function buildComposite(srcs,note='',qty='',expiryLabel=''){
   return new Promise(res=>{
+    // srcs must be [front, overview, expiry] with nulls preserved for position info
+    const front=srcs[0]||null, ovr=srcs[1]||null, exp=srcs[2]||null;
     const valid=srcs.filter(Boolean);
     if(!valid.length){res(null);return;}
-    const PAD=6,COLS=valid.length===1?1:valid.length===2?2:3;
-    // Smaller canvas = faster upload to Firebase; single image slightly taller
-    const cw=valid.length===1?480:440;
-    const imgH=valid.length===1?380:valid.length===2?320:270;
-    const ch=imgH+(note||qty?64:0);
-    const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+
+    const PAD=8;
+    const INFO_H=(note||qty||expiryLabel)?56:0;
+    const QUALITY=0.82;
+
+    // Build cell list based on how many images exist
+    let CW,CH_IMG,cells;
+    if(valid.length===3){
+      // New layout: expiry on left (full height), front top-right, overview bottom-right
+      CW=800; CH_IMG=580;
+      const LW=Math.floor((CW-PAD*3)*0.42); // left column width ~327px
+      const RW=CW-PAD*3-LW;                 // right column width ~457px
+      const RH=Math.floor((CH_IMG-PAD*3)/2); // right cell height ~278px
+      cells=[
+        {src:exp,   x:PAD,        y:PAD,        w:LW, h:CH_IMG-PAD*2}, // left full
+        {src:front, x:PAD*2+LW,   y:PAD,        w:RW, h:RH},           // right-top
+        {src:ovr,   x:PAD*2+LW,   y:PAD*2+RH,   w:RW, h:RH},           // right-bottom
+      ];
+    } else if(valid.length===2){
+      CW=640; CH_IMG=460;
+      const CellW=Math.floor((CW-PAD*3)/2);
+      cells=[
+        {src:valid[0], x:PAD,          y:PAD, w:CellW, h:CH_IMG-PAD*2},
+        {src:valid[1], x:PAD*2+CellW,  y:PAD, w:CellW, h:CH_IMG-PAD*2},
+      ];
+    } else {
+      CW=600; CH_IMG=480;
+      cells=[{src:valid[0], x:PAD, y:PAD, w:CW-PAD*2, h:CH_IMG-PAD*2}];
+    }
+
+    const ch=CH_IMG+INFO_H;
+    const cv=document.createElement('canvas'); cv.width=CW; cv.height=ch;
     const ctx=cv.getContext('2d');
-    ctx.fillStyle='#1e293b'; ctx.fillRect(0,0,cw,ch);
-    const cellW=Math.floor((cw-PAD*(COLS+1))/COLS);
-    const cellH=imgH-PAD*2;
+    ctx.fillStyle='#1e293b'; ctx.fillRect(0,0,CW,ch);
+
+    // Filter out cells with null src
+    const activeCells=cells.filter(c=>c.src);
+    if(!activeCells.length){res(null);return;}
+
+    function drawCell(cell,img){
+      const scaleX=cell.w/img.naturalWidth;
+      const scaleY=cell.h/img.naturalHeight;
+      const scale=Math.min(scaleX,scaleY);
+      const dw=img.naturalWidth*scale, dh=img.naturalHeight*scale;
+      const dx=cell.x+(cell.w-dw)/2, dy=cell.y+(cell.h-dh)/2;
+      ctx.save(); ctx.beginPath(); ctx.roundRect(cell.x,cell.y,cell.w,cell.h,12); ctx.clip();
+      ctx.drawImage(img,dx,dy,dw,dh);
+      ctx.restore();
+    }
+
     let loaded=0;
-    const imgs=valid.map(src=>{
+    activeCells.forEach(cell=>{
       const img=new Image(); img.crossOrigin='anonymous';
       img.onload=()=>{
+        drawCell(cell,img);
         loaded++;
-        if(loaded===valid.length){
-          valid.forEach((s,i)=>{
-            const x=PAD+(cellW+PAD)*i,y=PAD;
-            // draw image with contain (letterbox) so full photo is visible
-            const scaleX=cellW/imgs[i].naturalWidth;
-            const scaleY=cellH/imgs[i].naturalHeight;
-            const scale=Math.min(scaleX,scaleY);
-            const dw=imgs[i].naturalWidth*scale;
-            const dh=imgs[i].naturalHeight*scale;
-            const dx=x+(cellW-dw)/2;
-            const dy=y+(cellH-dh)/2;
-            ctx.save(); ctx.beginPath(); ctx.roundRect(x,y,cellW,cellH,10); ctx.clip();
-            ctx.drawImage(imgs[i],dx,dy,dw,dh);
+        if(loaded===activeCells.length){
+          // Draw expiry date overlay on expiry cell (3-image layout only)
+          if(expiryLabel && exp && valid.length===3){
+            const exCell=cells[0]; // cells[0] is always the expiry (left) cell
+            const bannerH=42;
+            const by=exCell.y+exCell.h-bannerH;
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(exCell.x,by,exCell.w,bannerH,[0,0,12,12]); ctx.clip();
+            ctx.fillStyle='rgba(15,23,42,0.82)'; ctx.fillRect(exCell.x,by,exCell.w,bannerH);
             ctx.restore();
-          });
-          if(note||qty){
-            ctx.fillStyle='#0f172a';
-            ctx.fillRect(0,imgH,cw,ch-imgH);
+            ctx.save();
+            ctx.fillStyle='#fef08a'; ctx.font='bold 17px Sarabun,sans-serif';
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText('หมดอายุ: '+expiryLabel, exCell.x+exCell.w/2, by+bannerH/2, exCell.w-16);
+            ctx.restore();
+          }
+          if(note||qty||expiryLabel){
+            ctx.fillStyle='#0f172a'; ctx.fillRect(0,CH_IMG,CW,INFO_H);
             ctx.fillStyle='#fff'; ctx.font='bold 22px Sarabun,sans-serif';
             let txt='';
-            if(qty) txt+=`📦 จำนวน ${qty} ชิ้น`;
+            if(expiryLabel) txt+=`หมดอายุ: ${expiryLabel}`;
+            if(expiryLabel&&(qty||note)) txt+='   ';
+            if(qty) txt+=`จำนวน ${qty} ชิ้น`;
             if(qty&&note) txt+='  ';
-            if(note) txt+=`📝 ${note}`;
-            ctx.fillText(txt,PAD*2,imgH+38,cw-PAD*4);
+            if(note) txt+=note;
+            ctx.fillText(txt,PAD*2,CH_IMG+38,CW-PAD*4);
           }
-          res(cv.toDataURL('image/jpeg',0.72));
+          res(cv.toDataURL('image/jpeg',QUALITY));
         }
       };
-      img.onerror=()=>{loaded++;if(loaded===valid.length)res(null);};
-      img.src=src; return img;
+      img.onerror=()=>{loaded++;if(loaded===activeCells.length)res(null);};
+      img.src=cell.src;
     });
   });
 }
@@ -799,8 +850,10 @@ async function downloadComposite(reportId,fmt='jpg'){
   let dataURL=rep.composite_img||_compCache[reportId]||null;
   if(!dataURL){
     toast('กำลังสร้างรูปรวม...');
-    const srcs=[rep.image_front,rep.image_overview,rep.image_expiry].filter(Boolean);
-    dataURL=await buildComposite(srcs,rep.note||'',rep.quantity??'');
+    const srcs=[rep.image_front,rep.image_overview,rep.image_expiry];
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLbl=`${expD}${THM[rep.expiry_month]||''} ${rep.expiry_year?rep.expiry_year+543:''}`.trim();
+    dataURL=await buildComposite(srcs,rep.note||'',rep.quantity??'',expLbl);
     if(!dataURL){toast('ไม่มีรูปภาพ','red');return;}
     _compCache[reportId]=dataURL;
   }
@@ -823,9 +876,11 @@ async function downloadComposite(reportId,fmt='jpg'){
 async function _getComposite(rep){
   let du=rep.composite_img||_compCache[rep.id]||null;
   if(!du){
-    const srcs=[rep.image_front,rep.image_overview,rep.image_expiry].filter(Boolean);
-    if(!srcs.length) return null;
-    du=await buildComposite(srcs,rep.note||'',rep.quantity??'');
+    const srcs=[rep.image_front,rep.image_overview,rep.image_expiry];
+    if(!srcs.some(Boolean)) return null;
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLbl=`${expD}${THM[rep.expiry_month]||''} ${rep.expiry_year?rep.expiry_year+543:''}`.trim();
+    du=await buildComposite(srcs,rep.note||'',rep.quantity??'',expLbl);
     if(du) _compCache[rep.id]=du;
   }
   return du;
@@ -898,21 +953,29 @@ async function submitReport(){
   if(!m)        return toast('กรุณาเลือกเดือนหมดอายุ','red');
   if(!y)        return toast('กรุณาเลือกปีหมดอายุ','red');
   if(!imgData.i1&&!imgData.i2&&!imgData.i3) return toast('กรุณาอัพโหลดรูปภาพอย่างน้อย 1 รูป','red');
-
+  const branch=_branches.find(b=>b.id===bId);
+  const brand=_brands.find(b=>b.id===brId);
+  const expLbl=`${d?d+' ':''}${THM[m]} ${y+543}`;
+  showConfirm(
+    'ยืนยันส่งรายงาน?',
+    `${branch?.name||''} · ${brand?.name||''} · หมดอายุ ${expLbl} · ${qty} ชิ้น`,
+    ()=>_doSubmit({bId,brId,d,m,y,qty,note,reporter,branch,brand,expLbl}),
+    '📤','#2563eb'
+  );
+}
+async function _doSubmit({bId,brId,d,m,y,qty,note,reporter,branch,brand,expLbl}){
   const btn=document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='⏳ กำลังส่ง...';
   try{
     const ridRef=db.ref('reports').push();
     const rid=ridRef.key;
-    const compositeDU=await buildComposite([imgData.i1,imgData.i2,imgData.i3],note,qty);
+    const compositeDU=await buildComposite([imgData.i1,imgData.i2,imgData.i3],note,qty,expLbl);
     const [imgFront,imgOvr,imgExp,imgComp]=await Promise.all([
       uploadToStorage(imgData.i1,`uploads/${rid}_front.jpg`),
       uploadToStorage(imgData.i2,`uploads/${rid}_overview.jpg`),
       uploadToStorage(imgData.i3,`uploads/${rid}_expiry.jpg`),
       uploadToStorage(compositeDU,`uploads/${rid}_composite.png`),
     ]);
-    const branch=_branches.find(b=>b.id===bId);
-    const brand=_brands.find(b=>b.id===brId);
     // If composite built → skip storing individual images (saves ~70% Firebase write size)
     const hasComp=!!imgComp;
     const reportData={
@@ -1014,6 +1077,24 @@ function buildFilters(){
   });
   document.getElementById('lbl-brand').textContent=chipBrands.size===0?'แบรนด์':`แบรนด์ (${chipBrands.size})`;
   document.getElementById('btn-brand').classList.toggle('active',chipBrands.size>0);
+  // Group filter
+  const gd=document.getElementById('fdd-group'); gd.innerHTML='';
+  const allGrp=_fddOpt('ทั้งหมด',chipGroups.size===0,false);
+  allGrp.onclick=e=>{e.stopPropagation();chipGroups.clear();buildFilters();renderReports();};
+  gd.appendChild(allGrp);
+  const grpDiv=document.createElement('div'); grpDiv.className='fdd-divider'; gd.appendChild(grpDiv);
+  if(_groups.filter(g=>g.active).length===0){
+    const none=document.createElement('div'); none.className='fdd-opt'; none.style.color='#9ca3af'; none.textContent='ยังไม่มีกลุ่ม'; gd.appendChild(none);
+  } else {
+    _groups.filter(g=>g.active).forEach(g=>{
+      const cnt=_reports.filter(r=>_brands.find(b=>b.id===r.brand_id&&b.group_id===g.id)).length;
+      const opt=_fddOpt(`${g.name} (${cnt})`,chipGroups.has(g.id),true);
+      opt.onclick=e=>{e.stopPropagation();chipGroups.has(g.id)?chipGroups.delete(g.id):chipGroups.add(g.id);buildFilters();renderReports();};
+      gd.appendChild(opt);
+    });
+  }
+  document.getElementById('lbl-group').textContent=chipGroups.size===0?'กลุ่มแบรนด์':`กลุ่มแบรนด์ (${chipGroups.size})`;
+  document.getElementById('btn-group').classList.toggle('active',chipGroups.size>0);
   const cd=document.getElementById('fdd-claim'); cd.innerHTML='';
   [['','ทั้งหมด'],['0','⏳ รอดำเนินการ'],['1','✅ เคลมแล้ว'],['sent','📨 ส่งเคลมแล้ว']].forEach(([v,lbl])=>{
     const opt=_fddOpt(lbl,chipClaim===v,false);
@@ -1052,6 +1133,7 @@ function renderReports(){
   let r=[..._reports];
   if(chipBranches.size>0) r=r.filter(x=>chipBranches.has(x.branch_id));
   if(chipBrands.size>0)   r=r.filter(x=>chipBrands.has(x.brand_id));
+  if(chipGroups.size>0){const gbIds=new Set(_brands.filter(b=>chipGroups.has(b.group_id)).map(b=>b.id));r=r.filter(x=>gbIds.has(x.brand_id));}
   if(chipClaim==='0')     r=r.filter(x=>!x.claim_status);
   if(chipClaim==='1')     r=r.filter(x=>x.claim_status);
   if(chipClaim==='sent')  r=r.filter(x=>x.sent_claim);
@@ -1124,15 +1206,15 @@ function renderReports(){
       const url=rep.composite_img;
       compEl.innerHTML=`<img src="${url}" onclick="openLB('${url}')" style="width:100%;height:auto;object-fit:contain;cursor:zoom-in;display:block" title="คลิกเพื่อขยาย" crossorigin="anonymous">`;
     } else {
-      const urls=[rep.image_front,rep.image_overview,rep.image_expiry].filter(Boolean);
-      if(!urls.length){compEl.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';}
+      const urls=[rep.image_front,rep.image_overview,rep.image_expiry];
+      if(!urls.some(Boolean)){compEl.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';}
       else{
         const cacheKey=rep.id;
         if(_compCache[cacheKey]){
           const cached=_compCache[cacheKey];
           compEl.innerHTML=`<img src="${cached}" onclick="openLB('${cached}')" style="width:100%;height:auto;object-fit:contain;cursor:zoom-in;display:block" title="คลิกเพื่อขยาย">`;
         } else {
-          buildComposite(urls,rep.note||'',rep.quantity??'').then(dataURL=>{
+          buildComposite(urls,rep.note||'',rep.quantity??'',expLabel).then(dataURL=>{
             const el=document.getElementById(`comp-${rep.id}`); if(!el) return;
             if(!dataURL){el.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';return;}
             _compCache[cacheKey]=dataURL;
