@@ -89,6 +89,83 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
 
 <!-- VIEW 1 : USER FORM -->
 <div id="v-user" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-4">
+
+  <!-- HOW TO USE -->
+  <div class="card" style="padding:0;overflow:hidden;border:1.5px solid #bfdbfe">
+    <button id="howto-toggle" onclick="toggleHowTo()"
+      style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <span style="font-size:1.3rem">📖</span>
+        <span style="font-weight:700;font-size:.92rem;color:#1d4ed8">วิธีใช้งาน</span>
+        <span style="font-size:.72rem;color:#60a5fa;background:#dbeafe;padding:.1rem .5rem;border-radius:99px;font-weight:600">คลิกเพื่อพับ/ขยาย</span>
+      </div>
+      <span id="howto-arrow" style="font-size:1rem;color:#93c5fd;transition:transform .25s">▲</span>
+    </button>
+    <div id="howto-body" style="padding:.25rem 1rem 1rem">
+      <!-- Step row helper -->
+      <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.1rem">
+
+        <div style="background:#f0f9ff;border-radius:.85rem;padding:.75rem .9rem;display:flex;gap:.75rem;align-items:flex-start">
+          <div style="min-width:2rem;height:2rem;background:#2563eb;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.85rem;flex-shrink:0">1</div>
+          <div>
+            <p style="font-weight:700;font-size:.85rem;color:#1e40af">📸 ถ่ายหรือเลือกรูปสินค้า</p>
+            <div style="margin-top:.3rem;display:flex;flex-direction:column;gap:.25rem">
+              <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:#374151">
+                <span style="background:#dbeafe;border-radius:.4rem;padding:.1rem .4rem;font-size:.7rem;font-weight:700;color:#1d4ed8">📦 รูปที่ 1</span>
+                ภาพหน้าสินค้า — ให้เห็นชื่อ/ยี่ห้อชัดเจน
+              </div>
+              <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:#374151">
+                <span style="background:#dcfce7;border-radius:.4rem;padding:.1rem .4rem;font-size:.7rem;font-weight:700;color:#15803d">📊 รูปที่ 2</span>
+                ภาพรวมจำนวน — ให้เห็นสินค้าทั้งกลุ่ม
+              </div>
+              <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:#374151">
+                <span style="background:#ffedd5;border-radius:.4rem;padding:.1rem .4rem;font-size:.7rem;font-weight:700;color:#c2410c">📅 รูปที่ 3</span>
+                ภาพวันหมดอายุ — โคลสอัพให้อ่านเลขได้ชัด
+              </div>
+            </div>
+            <p style="margin-top:.4rem;font-size:.73rem;color:#6b7280">💡 รูปจะถูกรวมเป็นภาพเดียวอัตโนมัติ ไม่จำเป็นต้องมีครบ 3 รูปก็ได้</p>
+          </div>
+        </div>
+
+        <div style="background:#f0fdf4;border-radius:.85rem;padding:.75rem .9rem;display:flex;gap:.75rem;align-items:flex-start">
+          <div style="min-width:2rem;height:2rem;background:#16a34a;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.85rem;flex-shrink:0">2</div>
+          <div>
+            <p style="font-weight:700;font-size:.85rem;color:#166534">📝 กรอกข้อมูลพื้นฐาน</p>
+            <div style="margin-top:.3rem;display:flex;flex-direction:column;gap:.2rem;font-size:.78rem;color:#374151">
+              <div>👤 <b>ชื่อผู้รายงาน</b> — ชื่อ-นามสกุล ระบบจำให้ในครั้งต่อไป</div>
+              <div>📍 <b>สาขา</b> — เลือกสาขาที่พบสินค้า</div>
+              <div>🏷️ <b>แบรนด์</b> — พิมพ์ค้นหา หรือพิมพ์ชื่อใหม่แล้วกด "+ เพิ่ม"</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff7ed;border-radius:.85rem;padding:.75rem .9rem;display:flex;gap:.75rem;align-items:flex-start">
+          <div style="min-width:2rem;height:2rem;background:#ea580c;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.85rem;flex-shrink:0">3</div>
+          <div>
+            <p style="font-weight:700;font-size:.85rem;color:#9a3412">📅 ระบุวันหมดอายุและจำนวน</p>
+            <div style="margin-top:.3rem;display:flex;flex-direction:column;gap:.2rem;font-size:.78rem;color:#374151">
+              <div>📅 เลือก <b>วัน / เดือน / ปี (พ.ศ./ค.ศ.)</b> ที่หมดอายุบนบรรจุภัณฑ์</div>
+              <div>📦 ระบุ <b>จำนวนสินค้า</b> เป็นชิ้น (บังคับ)</div>
+              <div>📋 <b>หมายเหตุ</b> เพิ่มเติม เช่น ล็อต สถานที่วาง (ไม่บังคับ)</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#f5f3ff;border-radius:.85rem;padding:.75rem .9rem;display:flex;gap:.75rem;align-items:flex-start">
+          <div style="min-width:2rem;height:2rem;background:#7c3aed;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.85rem;flex-shrink:0">4</div>
+          <div>
+            <p style="font-weight:700;font-size:.85rem;color:#5b21b6">📤 ส่งรายงาน</p>
+            <div style="margin-top:.3rem;font-size:.78rem;color:#374151">
+              กด <b>"ส่งรายงาน"</b> → ตรวจสอบข้อมูลใน popup → กด <b>"ยืนยัน"</b>
+              <br>ระบบจะบันทึกและแจ้งผล Admin ทันที
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <p class="text-sm font-bold text-gray-700 mb-3">🖼️ รูปภาพประกอบ <span class="text-xs font-normal text-gray-400">คลิกเพื่อถ่าย/เลือกรูป</span></p>
     <div class="space-y-3">
@@ -156,7 +233,7 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <p class="text-sm font-bold text-gray-700">📝 รายละเอียดสินค้า</p>
     <div>
       <label class="block text-xs font-semibold text-gray-500 mb-1.5">📅 วัน/เดือน/ปี หมดอายุ <span class="text-red-500">*</span></label>
-      <div class="grid grid-cols-3 gap-2">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:.5rem">
         <select id="expiryD" onchange="updateStatus()" class="border border-gray-200 rounded-xl px-2 py-2.5 text-sm bg-gray-50" style="outline:none">
           <option value="">วันที่</option>
         </select>
@@ -170,7 +247,7 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
           <option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
         </select>
         <select id="expiryY" onchange="updateStatus()" class="border border-gray-200 rounded-xl px-2 py-2.5 text-sm bg-gray-50" style="outline:none">
-          <option value="">ปี พ.ศ.</option>
+          <option value="">ปี (พ.ศ./ค.ศ.)</option>
         </select>
       </div>
     </div>
@@ -239,11 +316,11 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <div class="card">
       <p class="text-xs font-semibold text-gray-400 mb-2.5">⚡ การดำเนินการ</p>
       <div class="flex gap-2 flex-wrap">
-        <button onclick="downloadAllImages('jpg')"
+        <button onclick="downloadAllImages_JPG()"
           style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.78rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
           🖼 ทั้งหมด JPG
         </button>
-        <button onclick="downloadAllImages('pdf')"
+        <button onclick="downloadAllImages_PDF()"
           style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#fff0f0;color:#dc2626;font-size:.78rem;font-weight:700;border:1.5px solid #fca5a5;cursor:pointer">
           📄 ทั้งหมด PDF
         </button>
@@ -273,11 +350,11 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
           <select id="dl-year" class="border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs bg-gray-50" style="outline:none">
             <option value="">ทุกปี</option>
           </select>
-          <button onclick="downloadFilteredImages('jpg')"
+          <button onclick="downloadFilteredImages_JPG()"
             style="padding:.4rem .85rem;border-radius:.7rem;background:#1d4ed8;color:#fff;font-size:.75rem;font-weight:700;border:none;cursor:pointer">
             🖼 JPG
           </button>
-          <button onclick="downloadFilteredImages('pdf')"
+          <button onclick="downloadFilteredImages_PDF()"
             style="padding:.4rem .85rem;border-radius:.7rem;background:#dc2626;color:#fff;font-size:.75rem;font-weight:700;border:none;cursor:pointer">
             📄 PDF
           </button>
@@ -682,7 +759,7 @@ function populateFormSelects(){
   const ds=document.getElementById('expiryD');
   if(ds.options.length<=1){for(let d=1;d<=31;d++) ds.add(new Option(d,d));}
   const ys=document.getElementById('expiryY');
-  if(ys.options.length<=1){const ny=nowTH().getFullYear();for(let y=ny-2;y<=ny+5;y++) ys.add(new Option(`${y+543}`,y));}
+  if(ys.options.length<=1){const ny=nowTH().getFullYear();for(let y=ny-2;y<=ny+5;y++) ys.add(new Option(`${y+543} / ${y}`,y));}
   const rn=document.getElementById('reporterName');
   if(rn&&!rn.value) rn.value=localStorage.getItem('reporterName')||'';
 }
@@ -732,6 +809,22 @@ async function handleImg(input,prevId,nameId,plusId,key){
   const n=document.getElementById(nameId); n.textContent=file.name; n.style.display='block';
   document.getElementById(plusId).style.display='none';
   updateStatus();
+}
+
+// ══════════════════════════════════════════
+// LOGO WATERMARK
+// ══════════════════════════════════════════
+const LOGO_DATA_URL='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjAgMjI4Ij4KICA8cmVjdCB3aWR0aD0iNTIwIiBoZWlnaHQ9IjIyOCIgcng9IjExNCIgZmlsbD0iI2M5Yjg5YSIvPgogIDxyZWN0IHg9IjE1IiB5PSIxNSIgd2lkdGg9IjQ5MCIgaGVpZ2h0PSIxOTgiIHJ4PSI5OSIgZmlsbD0id2hpdGUiLz4KICA8dGV4dCB4PSI2OCIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSW1wYWN0LHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTI0IiBmb250LXdlaWdodD0iOTAwIiBmaWxsPSIjZTIyZTJlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BPC90ZXh0PgogIDx0ZXh0IHg9IjE4MiIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSW1wYWN0LHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTI0IiBmb250LXdlaWdodD0iOTAwIiBmaWxsPSIjMmE2ZmM5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5CPC90ZXh0PgogIDx0ZXh0IHg9IjI5NiIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSW1wYWN0LHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTI0IiBmb250LXdlaWdodD0iOTAwIiBmaWxsPSIjZjVhNTIzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5DPC90ZXh0PgogIDx0ZXh0IHg9IjQwOCIgeT0iMTQ4IiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSW1wYWN0LHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTI0IiBmb250LXdlaWdodD0iOTAwIiBmaWxsPSIjM2ZhMDQyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5EPC90ZXh0PgogIDxwYXRoIGQ9Ik00NDggNDIgUTQ2OCAyMiA0ODggMTAiIHN0cm9rZT0iIzNmYTA0MiIgc3Ryb2tlLXdpZHRoPSIxMSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTQ1OCA2NyBRNDc4IDU3IDQ5OSA1NyIgc3Ryb2tlPSIjM2ZhMDQyIiBzdHJva2Utd2lkdGg9IjExIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNNDUyIDEwMiBRNDcyIDExOCA0ODIgMTM0IiBzdHJva2U9IiMzZmEwNDIiIHN0cm9rZS13aWR0aD0iMTEiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDx0ZXh0IHg9IjI2MCIgeT0iMjAwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSW1wYWN0LHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjYiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiMxMTExMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiPmFsbCBhYm91dCBjYXRzJmFtcDtkb2dzPC90ZXh0Pgo8L3N2Zz4=';
+let _logoImg=null;
+function _drawLogoOnCanvas(ctx,x,y,w,h,cb){
+  if(_logoImg){
+    ctx.save();ctx.globalAlpha=0.92;ctx.drawImage(_logoImg,x,y,w,h);ctx.restore();cb();
+  } else {
+    const img=new Image();
+    img.onload=()=>{_logoImg=img;ctx.save();ctx.globalAlpha=0.92;ctx.drawImage(img,x,y,w,h);ctx.restore();cb();};
+    img.onerror=()=>cb();
+    img.src=LOGO_DATA_URL;
+  }
 }
 
 // ══════════════════════════════════════════
@@ -828,7 +921,12 @@ function buildComposite(srcs,note='',qty='',expiryLabel=''){
             if(note) txt+=note;
             ctx.fillText(txt,PAD*2,CH_IMG+38,CW-PAD*4);
           }
-          res(cv.toDataURL('image/jpeg',QUALITY));
+          // Draw logo watermark — bottom-right corner of image area
+          const logoW=140, logoH=Math.round(140*228/520);
+          const logoX=CW-logoW-PAD*2, logoY=CH_IMG-logoH-PAD*2;
+          _drawLogoOnCanvas(ctx,logoX,logoY,logoW,logoH,()=>{
+            res(cv.toDataURL('image/jpeg',QUALITY));
+          });
         }
       };
       img.onerror=()=>{loaded++;if(loaded===activeCells.length)res(null);};
@@ -844,25 +942,31 @@ async function uploadToStorage(dataURL,_path){
 // ══════════════════════════════════════════
 // DOWNLOAD HELPERS
 // ══════════════════════════════════════════
-function downloadComposite(reportId,fmt='jpg'){
+// ── ต่อ 1 รายการ: JPG ─────────────────────
+function downloadCompositeJPG(reportId){
   const rep=_reports.find(r=>r.id===reportId); if(!rep) return;
-  const fmtLabel=fmt==='pdf'?'PDF (1 ไฟล์)':'JPG (1 ไฟล์)';
-  showConfirm(`ดาวน์โหลด ${fmt.toUpperCase()}?`,`${rep.branch_name} · ${rep.brand_name}\nรูปแบบ: ${fmtLabel}`,()=>_doDownloadComposite(reportId,fmt),'⬇️','#1d4ed8');
+  showConfirm('ดาวน์โหลด JPG?',`${rep.branch_name} · ${rep.brand_name}\nไฟล์ภาพ JPG 1 ไฟล์`,function(){_doDownloadJPG(reportId);},'🖼','#1d4ed8');
 }
-async function _doDownloadComposite(reportId,fmt){
+async function _doDownloadJPG(reportId){
   const rep=_reports.find(r=>r.id===reportId); if(!rep) return;
   const safeName=(rep.branch_name||'report').replace(/\s+/g,'_');
-  let dataURL=rep.composite_img||_compCache[reportId]||null;
-  if(!dataURL){
-    toast('กำลังสร้างรูปรวม...');
-    const srcs=[rep.image_front,rep.image_overview,rep.image_expiry];
-    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
-    const expLbl=`${expD}${THM[rep.expiry_month]||''} ${rep.expiry_year?rep.expiry_year+543:''}`.trim();
-    dataURL=await buildComposite(srcs,rep.note||'',rep.quantity??'',expLbl);
-    if(!dataURL){toast('ไม่มีรูปภาพ','red');return;}
-    _compCache[reportId]=dataURL;
-  }
-  if(fmt==='pdf'){
+  const dataURL=await _getComposite(rep);
+  if(!dataURL){toast('ไม่มีรูปภาพ','red');return;}
+  const a=document.createElement('a');
+  a.href=dataURL; a.download=`claim_${safeName}.jpg`; a.click();
+  toast('🖼 ดาวน์โหลด JPG สำเร็จ ✅');
+}
+// ── ต่อ 1 รายการ: PDF ─────────────────────
+function downloadCompositePDF(reportId){
+  const rep=_reports.find(r=>r.id===reportId); if(!rep) return;
+  showConfirm('ดาวน์โหลด PDF?',`${rep.branch_name} · ${rep.brand_name}\nไฟล์ PDF 1 ไฟล์ (1 หน้า)`,function(){_doDownloadPDF(reportId);},'📄','#dc2626');
+}
+async function _doDownloadPDF(reportId){
+  const rep=_reports.find(r=>r.id===reportId); if(!rep) return;
+  const safeName=(rep.branch_name||'report').replace(/\s+/g,'_');
+  const dataURL=await _getComposite(rep);
+  if(!dataURL){toast('ไม่มีรูปภาพ','red');return;}
+  try{
     const img=new Image(); img.src=dataURL;
     await new Promise(r=>{img.onload=r;img.onerror=r;});
     const iw=img.naturalWidth||600, ih=img.naturalHeight||400;
@@ -872,11 +976,8 @@ async function _doDownloadComposite(reportId,fmt){
     const pdf=new jsPDF({orientation:iw>=ih?'landscape':'portrait',unit:'mm',format:[pw,ph]});
     pdf.addImage(dataURL,'JPEG',0,0,pw,ph,undefined,'FAST');
     pdf.save(`claim_${safeName}.pdf`);
-  } else {
-    const a=document.createElement('a'); a.href=dataURL;
-    a.download=`claim_${safeName}.jpg`; a.click();
-  }
-  toast('ดาวน์โหลดสำเร็จ ✅');
+    toast('📄 ดาวน์โหลด PDF สำเร็จ ✅');
+  }catch(e){toast('PDF ไม่สำเร็จ: '+e.message,'red');}
 }
 async function _getComposite(rep){
   let du=rep.composite_img||_compCache[rep.id]||null;
@@ -890,12 +991,64 @@ async function _getComposite(rep){
   }
   return du;
 }
-async function _batchDownload(reports,fmt='jpg'){
+// ── ทั้งหมด JPG ────────────────────────────
+function downloadAllImages_JPG(){
+  const n=_reports.length;
+  if(!n){toast('ไม่มีรายการ','red');return;}
+  const sub=`ไฟล์ภาพ JPG จำนวน ${n} ไฟล์ (ดาวน์โหลดแยกไฟล์)`;
+  showConfirm(`ดาวน์โหลด JPG ทั้งหมด?`,sub,function(){_batchDownloadJPG(_reports);},'🖼','#1d4ed8');
+}
+// ── ทั้งหมด PDF ────────────────────────────
+function downloadAllImages_PDF(){
+  const n=_reports.length;
+  if(!n){toast('ไม่มีรายการ','red');return;}
+  const sub=`ไฟล์ PDF รวม 1 ไฟล์ บรรจุ ${n} หน้า`;
+  showConfirm(`ดาวน์โหลด PDF ทั้งหมด?`,sub,function(){_batchDownloadPDF(_reports);},'📄','#dc2626');
+}
+// ── กรอง JPG ───────────────────────────────
+function downloadFilteredImages_JPG(){
+  const dlM=document.getElementById('dl-month').value;
+  const dlY=document.getElementById('dl-year').value;
+  let r=[..._reports];
+  if(dlM) r=r.filter(x=>String(x.expiry_month)===dlM);
+  if(dlY) r=r.filter(x=>String(x.expiry_year)===dlY);
+  if(!r.length){toast('ไม่มีรายการที่ตรงเงื่อนไข','red');return;}
+  const sub=`ไฟล์ภาพ JPG จำนวน ${r.length} ไฟล์ (ดาวน์โหลดแยกไฟล์)`;
+  showConfirm(`ดาวน์โหลด JPG ${r.length} รายการ?`,sub,function(){_batchDownloadJPG(r);},'🖼','#1d4ed8');
+}
+// ── กรอง PDF ───────────────────────────────
+function downloadFilteredImages_PDF(){
+  const dlM=document.getElementById('dl-month').value;
+  const dlY=document.getElementById('dl-year').value;
+  let r=[..._reports];
+  if(dlM) r=r.filter(x=>String(x.expiry_month)===dlM);
+  if(dlY) r=r.filter(x=>String(x.expiry_year)===dlY);
+  if(!r.length){toast('ไม่มีรายการที่ตรงเงื่อนไข','red');return;}
+  const sub=`ไฟล์ PDF รวม 1 ไฟล์ บรรจุ ${r.length} หน้า`;
+  showConfirm(`ดาวน์โหลด PDF ${r.length} รายการ?`,sub,function(){_batchDownloadPDF(r);},'📄','#dc2626');
+}
+// ── ฟังก์ชันโหลด JPG จริง (ดาวน์โหลดแยกไฟล์) ─
+async function _batchDownloadJPG(reports){
   if(!reports.length){toast('ไม่มีรายการ','red');return;}
-  const fmtTxt=fmt==='pdf'?'PDF':'JPG';
-  toast(`⏳ กำลังสร้าง ${fmtTxt} ${reports.length} รายการ...`);
-  if(fmt==='pdf'){
-    // รวมทุกรายการเป็น PDF เล่มเดียว (หลายหน้า)
+  toast(`⏳ กำลังสร้าง JPG ${reports.length} รายการ...`);
+  let dlCount=0;
+  for(let i=0;i<reports.length;i++){
+    const rep=reports[i];
+    const du=await _getComposite(rep);
+    if(!du) continue;
+    dlCount++;
+    const safeName=(rep.branch_name||'').replace(/\s+/g,'_')||'report';
+    const a=document.createElement('a');
+    a.href=du; a.download=`claim_${String(i+1).padStart(2,'0')}_${safeName}.jpg`; a.click();
+    await new Promise(r=>setTimeout(r,300));
+  }
+  toast(`🖼 JPG ${dlCount} ไฟล์ ดาวน์โหลดแล้ว ✅`);
+}
+// ── ฟังก์ชันโหลด PDF จริง (รวมเป็น 1 ไฟล์) ──
+async function _batchDownloadPDF(reports){
+  if(!reports.length){toast('ไม่มีรายการ','red');return;}
+  toast(`⏳ กำลังสร้าง PDF ${reports.length} หน้า...`);
+  try{
     const {jsPDF}=window.jspdf;
     let pdf=null; let pageCount=0;
     for(let i=0;i<reports.length;i++){
@@ -903,9 +1056,9 @@ async function _batchDownload(reports,fmt='jpg'){
       if(!du) continue;
       const img=new Image(); img.src=du;
       await new Promise(r=>{img.onload=r;img.onerror=r;});
-      const iw=img.naturalWidth||480,ih=img.naturalHeight||380;
+      const iw=img.naturalWidth||480, ih=img.naturalHeight||380;
       const pxMm=0.264583;
-      const pw=iw*pxMm,ph=ih*pxMm;
+      const pw=iw*pxMm, ph=ih*pxMm;
       const ori=iw>=ih?'landscape':'portrait';
       if(!pdf){pdf=new jsPDF({orientation:ori,unit:'mm',format:[pw,ph]});}
       else{pdf.addPage([pw,ph],ori);}
@@ -916,37 +1069,7 @@ async function _batchDownload(reports,fmt='jpg'){
       pdf.save(`claims_${pageCount}รายการ.pdf`);
       toast(`📄 PDF ${pageCount} หน้า ดาวน์โหลดแล้ว ✅`);
     } else {toast('ไม่มีรูปภาพ','red');}
-  } else {
-    // ดาวน์โหลดเป็น JPG แยกไฟล์
-    let dlCount=0;
-    for(let i=0;i<reports.length;i++){
-      const rep=reports[i];
-      const du=await _getComposite(rep);
-      if(!du) continue;
-      dlCount++;
-      const safeName=(rep.branch_name||'').replace(/\s+/g,'_')||'report';
-      const a=document.createElement('a');
-      a.href=du; a.download=`claim_${String(i+1).padStart(2,'0')}_${safeName}.jpg`; a.click();
-      await new Promise(r=>setTimeout(r,300));
-    }
-    toast(`🖼 JPG ${dlCount} ไฟล์ ดาวน์โหลดแล้ว ✅`);
-  }
-}
-async function downloadAllImages(fmt='jpg'){
-  const n=_reports.length;
-  if(!n){toast('ไม่มีรายการ','red');return;}
-  const desc=fmt==='pdf'?`PDF รวม 1 ไฟล์ (${n} หน้า)`:`JPG ${n} ไฟล์แยก`;
-  showConfirm(`ดาวน์โหลด ${n} รายการ?`,`รูปแบบ: ${desc}`,()=>_batchDownload(_reports,fmt),'⬇️','#1d4ed8');
-}
-async function downloadFilteredImages(fmt='jpg'){
-  const dlM=document.getElementById('dl-month').value;
-  const dlY=document.getElementById('dl-year').value;
-  let r=[..._reports];
-  if(dlM) r=r.filter(x=>String(x.expiry_month)===dlM);
-  if(dlY) r=r.filter(x=>String(x.expiry_year)===dlY);
-  if(!r.length){toast('ไม่มีรายการที่ตรงเงื่อนไข','red');return;}
-  const desc=fmt==='pdf'?`PDF รวม 1 ไฟล์ (${r.length} หน้า)`:`JPG ${r.length} ไฟล์แยก`;
-  showConfirm(`ดาวน์โหลด ${r.length} รายการ?`,`รูปแบบ: ${desc}`,()=>_batchDownload(r,fmt),'⬇️','#1d4ed8');
+  }catch(e){toast('PDF ไม่สำเร็จ: '+e.message,'red');}
 }
 
 // ══════════════════════════════════════════
@@ -1190,11 +1313,11 @@ function renderReports(){
       </div>
       <div id="comp-${rep.id}" style="width:100%;background:#1e293b;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem;min-height:72px">⏳ กำลังโหลดรูป...</div>
       <div style="display:flex;gap:.4rem">
-        <button onclick="downloadComposite('${rep.id}','jpg')"
+        <button onclick="downloadCompositeJPG('${rep.id}')"
           style="flex:1;padding:.5rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.8rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
           🖼 JPG
         </button>
-        <button onclick="downloadComposite('${rep.id}','pdf')"
+        <button onclick="downloadCompositePDF('${rep.id}')"
           style="flex:1;padding:.5rem;border-radius:.7rem;background:#fff0f0;color:#dc2626;font-size:.8rem;font-weight:700;border:1.5px solid #fca5a5;cursor:pointer">
           📄 PDF
         </button>
@@ -1519,9 +1642,30 @@ function toast(msg,type='green'){
 }
 
 // ══════════════════════════════════════════
+// HOW TO USE TOGGLE
+// ══════════════════════════════════════════
+function toggleHowTo(){
+  const body=document.getElementById('howto-body');
+  const arrow=document.getElementById('howto-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  arrow.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+  localStorage.setItem('howtoOpen',isOpen?'0':'1');
+}
+function initHowTo(){
+  const saved=localStorage.getItem('howtoOpen');
+  // Default open on first visit; collapse if user previously closed it
+  if(saved==='0'){
+    document.getElementById('howto-body').style.display='none';
+    document.getElementById('howto-arrow').style.transform='rotate(180deg)';
+  }
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
 async function init(){
+  initHowTo();
   await seedIfEmpty();
   await Promise.all([loadAll(), tryRestoreSession()]);
   populateFormSelects();
