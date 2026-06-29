@@ -534,8 +534,13 @@ async function showDash(){
   document.getElementById('dashSection').style.display='block';
   const dy=document.getElementById('dl-year');
   if(dy.options.length<=1){const ny=nowTH().getFullYear();for(let y=ny-3;y<=ny+4;y++) dy.add(new Option(`${y+543}`,y));}
-  await Promise.all([loadReports(),loadStats()]);
-  buildFilters(); updateStats(); renderReports();
+  // Render existing cached reports immediately (no wait) → user sees data right away
+  if(_reports.length){buildFilters();calcStats();updateStats();renderReports();}
+  // Then reload fresh from RTDB in background
+  try{
+    await Promise.all([loadReports(),loadStats()]);
+    buildFilters(); updateStats(); renderReports();
+  }catch(e){toast('โหลดข้อมูลไม่สำเร็จ: '+e.message,'red');}
 }
 
 // ══════════════════════════════════════════
@@ -687,7 +692,7 @@ function updateStatus(){
 // ══════════════════════════════════════════
 // IMAGE COMPRESS + PREVIEW
 // ══════════════════════════════════════════
-function compressImg(file,maxPx=650,q=0.60){
+function compressImg(file,maxPx=500,q=0.55){
   return new Promise(res=>{
     const r=new FileReader();
     r.onload=e=>{
@@ -725,9 +730,9 @@ function buildComposite(srcs,note='',qty=''){
     const valid=srcs.filter(Boolean);
     if(!valid.length){res(null);return;}
     const PAD=6,COLS=valid.length===1?1:valid.length===2?2:3;
-    const cw=600;
-    // Height: taller for single image (closer to natural photo ratio), shorter for grids
-    const imgH=valid.length===1?480:valid.length===2?380:310;
+    // Smaller canvas = faster upload to Firebase; single image slightly taller
+    const cw=valid.length===1?480:440;
+    const imgH=valid.length===1?380:valid.length===2?320:270;
     const ch=imgH+(note||qty?64:0);
     const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
     const ctx=cv.getContext('2d');
@@ -764,7 +769,7 @@ function buildComposite(srcs,note='',qty=''){
             if(note) txt+=`📝 ${note}`;
             ctx.fillText(txt,PAD*2,imgH+38,cw-PAD*4);
           }
-          res(cv.toDataURL('image/jpeg',0.70));
+          res(cv.toDataURL('image/jpeg',0.65));
         }
       };
       img.onerror=()=>{loaded++;if(loaded===valid.length)res(null);};
@@ -871,6 +876,8 @@ async function submitReport(){
     ]);
     const branch=_branches.find(b=>b.id===bId);
     const brand=_brands.find(b=>b.id===brId);
+    // If composite built → skip storing individual images (saves ~70% Firebase write size)
+    const hasComp=!!imgComp;
     const reportData={
       branch_id:bId, branch_name:branch?.name||'',
       brand_id:brId, brand_name:brand?.name||'',
@@ -878,7 +885,9 @@ async function submitReport(){
       expiry_day:d, expiry_month:m, expiry_year:y,
       is_expired:isExpiredFn(m,y)?1:0,
       quantity:qty?parseInt(qty):null,
-      image_front:imgFront||null, image_overview:imgOvr||null, image_expiry:imgExp||null,
+      image_front:hasComp?null:(imgFront||null),
+      image_overview:hasComp?null:(imgOvr||null),
+      image_expiry:hasComp?null:(imgExp||null),
       composite_img:imgComp||null, note:note||null,
       claim_status:0, claimed_at:null, claimed_by:null,
       sent_claim:0, sent_at:null,
