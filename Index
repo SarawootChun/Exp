@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>ระบบรายงานสินค้าหมดอายุ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Sarabun',sans-serif;box-sizing:border-box}
+
+.uzone{display:flex;align-items:center;gap:.75rem;border:2.5px dashed;border-radius:.75rem;padding:.85rem 1rem;cursor:pointer;transition:transform .18s,box-shadow .18s;-webkit-tap-highlight-color:transparent}
+.uzone:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.uzone.done{border-style:solid}
+.uzone input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+.sbg{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem 1rem;border-radius:99px;font-weight:700;font-size:.93rem}
+.sbg-g{background:#dcfce7;color:#15803d;border:2px solid #86efac}
+.sbg-r{background:#fee2e2;color:#dc2626;border:2px solid #fca5a5}
+.sbg-n{background:#f3f4f6;color:#9ca3af;border:2px solid #e5e7eb}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dg{background:#16a34a;animation:p 1.8s infinite}
+.dr{background:#dc2626;animation:p 1.8s infinite}
+@keyframes p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
+
+.nb{flex:1;padding:.6rem 0;font-size:.78rem;font-weight:600;color:#9ca3af;border-top:3px solid transparent;transition:all .2s;background:none;border-left:none;border-right:none;border-bottom:none;cursor:pointer}
+.nb.on{color:#1d4ed8;border-top-color:#1d4ed8}
+
+.bx{display:inline-flex;align-items:center;gap:.2rem;padding:.15rem .6rem;border-radius:99px;font-size:.73rem;font-weight:700}
+.bx-r{background:#fee2e2;color:#dc2626}
+.bx-g{background:#dcfce7;color:#15803d}
+.bx-y{background:#fef9c3;color:#a16207}
+.bx-b{background:#dbeafe;color:#1d4ed8}
+.bx-p{background:#ede9fe;color:#7c3aed}
+.bx-o{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+
+.mbtn{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;font-weight:700;transition:all .2s;border:none;cursor:pointer}
+.mbtn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(59,130,246,.4)}
+.mbtn:disabled{background:#9ca3af;cursor:not-allowed;transform:none;box-shadow:none}
+
+.card{background:#fff;border-radius:1rem;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #f3f4f6}
+
+#lb{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:9990;display:none;align-items:center;justify-content:center}
+#lb img{max-width:96vw;max-height:90vh;border-radius:.8rem}
+
+#toast{position:fixed;bottom:5.5rem;left:50%;z-index:9999;min-width:14rem;transform:translateX(-50%) translateY(6rem);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* chip filters */
+.chip{display:inline-flex;align-items:center;padding:.28rem .7rem;border-radius:99px;font-size:.74rem;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;background:#f9fafb;color:#6b7280;transition:all .15s;white-space:nowrap;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.chip:hover{border-color:#93c5fd;color:#1d4ed8}
+.chip.on{background:#dbeafe;border-color:#60a5fa;color:#1d4ed8}
+.chip-row{display:flex;flex-wrap:wrap;gap:.4rem}
+
+/* brand combobox dropdown */
+#brandDD{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1.5px solid #e5e7eb;border-radius:.75rem;box-shadow:0 8px 24px rgba(0,0,0,.13);z-index:300;overflow:hidden;max-height:14rem;overflow-y:auto}
+.bd-item{padding:.5rem 1rem;font-size:.85rem;cursor:pointer;color:#374151;transition:background .12s}
+.bd-item:hover,.bd-item:active{background:#eff6ff}
+.bd-group-hd{padding:.28rem 1rem .1rem;font-size:.68rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-top:1px solid #f3f4f6}
+.bd-add{padding:.5rem 1rem;font-size:.85rem;cursor:pointer;color:#2563eb;font-weight:700;border-top:1px solid #e5e7eb;background:#f0f9ff;transition:background .12s}
+.bd-add:hover,.bd-add:active{background:#dbeafe}
+
+/* confirm modal */
+#confirmModal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9995;display:none;align-items:center;justify-content:center;padding:1rem}
+
+select,input,textarea{appearance:none;-webkit-appearance:none}
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ═══ HEADER ═══ -->
+<header class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-xl">📦</div>
+      <div>
+        <div id="headerTitle" class="font-bold text-gray-800 text-sm leading-tight">แจ้งสินค้าหมดอายุ</div>
+        <div id="clock" class="text-xs text-gray-400">--:--:--</div>
+      </div>
+    </div>
+    <div id="adminBadge" style="display:none" class="bg-blue-50 border border-blue-200 rounded-xl px-3 py-1 flex items-center gap-1.5">
+      <span class="w-2 h-2 bg-blue-500 rounded-full inline-block"></span>
+      <span class="text-xs font-semibold text-blue-700">Admin</span>
+      <button onclick="logout()" style="margin-left:.25rem;color:#9ca3af;font-weight:700;background:none;border:none;cursor:pointer;font-size:.9rem">✕</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 flex">
+  <button class="nb on" id="nb-user"      onclick="goTo('user')">      <div class="text-xl">📤</div><div>ส่งรายงาน</div></button>
+  <button class="nb"    id="nb-dashboard" onclick="goTo('dashboard')"> <div class="text-xl">📊</div><div>Admin</div></button>
+  <button class="nb"    id="nb-settings"  onclick="goTo('settings')">  <div class="text-xl">⚙️</div><div>ตั้งค่า</div></button>
+</nav>
+
+<!-- ════════════════════════════════════════
+     VIEW 1 : USER FORM
+════════════════════════════════════════════ -->
+<div id="v-user" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-4">
+
+  <!-- รูปภาพ -->
+  <div class="card">
+    <p class="text-sm font-bold text-gray-700 mb-3">🖼️ รูปภาพประกอบ <span class="text-xs font-normal text-gray-400">คลิกเพื่อถ่าย/เลือกรูป</span></p>
+    <div class="space-y-3">
+      <label for="inp1" class="uzone border-blue-300 bg-blue-50">
+        <input type="file" id="inp1" accept="image/*" capture="environment" onchange="handleImg(this,'prev1','name1','plus1','i1')">
+        <div id="prev1" class="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">📦</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm text-gray-700">ภาพหน้าสินค้า</p>
+          <p class="text-xs text-gray-400 mt-0.5">ถ่ายให้เห็นชื่อสินค้าชัดเจน</p>
+          <p id="name1" class="text-xs text-blue-600 mt-1 truncate" style="display:none"></p>
+        </div>
+        <span id="plus1" class="text-blue-400 text-2xl flex-shrink-0">＋</span>
+      </label>
+      <label for="inp2" class="uzone border-green-300 bg-green-50">
+        <input type="file" id="inp2" accept="image/*" capture="environment" onchange="handleImg(this,'prev2','name2','plus2','i2')">
+        <div id="prev2" class="w-16 h-16 rounded-xl bg-green-100 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">📊</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm text-gray-700">ภาพรวมจำนวนสินค้า</p>
+          <p class="text-xs text-gray-400 mt-0.5">ถ่ายให้เห็นปริมาณสินค้าทั้งหมด</p>
+          <p id="name2" class="text-xs text-green-600 mt-1 truncate" style="display:none"></p>
+        </div>
+        <span id="plus2" class="text-green-400 text-2xl flex-shrink-0">＋</span>
+      </label>
+      <label for="inp3" class="uzone border-orange-300 bg-orange-50">
+        <input type="file" id="inp3" accept="image/*" capture="environment" onchange="handleImg(this,'prev3','name3','plus3','i3')">
+        <div id="prev3" class="w-16 h-16 rounded-xl bg-orange-100 flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">📅</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm text-gray-700">ภาพเลขวันหมดอายุ</p>
+          <p class="text-xs text-gray-400 mt-0.5">ถ่ายให้เห็นวันหมดอายุบนบรรจุภัณฑ์</p>
+          <p id="name3" class="text-xs text-orange-600 mt-1 truncate" style="display:none"></p>
+        </div>
+        <span id="plus3" class="text-orange-400 text-2xl flex-shrink-0">＋</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- ข้อมูลพื้นฐาน -->
+  <div class="card space-y-4">
+    <p class="text-sm font-bold text-gray-700">ℹ️ ข้อมูลพื้นฐาน</p>
+    <div>
+      <label class="block text-xs font-semibold text-gray-500 mb-1.5">👤 ชื่อผู้รายงาน <span class="text-red-500">*</span></label>
+      <input id="reporterName" type="text" placeholder="ชื่อ-นามสกุล ผู้รายงาน"
+        class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50" style="outline:none"
+        oninput="localStorage.setItem('reporterName',this.value)">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-gray-500 mb-1.5">📍 สาขา <span class="text-red-500">*</span></label>
+      <select id="branchSel" class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50" style="outline:none">
+        <option value="">— เลือกสาขา —</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-gray-500 mb-1.5">🏷️ แบรนด์สินค้า <span class="text-red-500">*</span></label>
+      <div style="position:relative">
+        <input id="brandSearch" type="text" placeholder="ค้นหาหรือพิมพ์ชื่อแบรนด์..." autocomplete="off"
+          class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50" style="outline:none"
+          oninput="filterBrands()" onfocus="openBrandDD()" onblur="setTimeout(closeBrandDD,220)">
+        <input type="hidden" id="brandId" value="">
+        <div id="brandDD"></div>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">💡 พิมพ์ชื่อใหม่แล้วกด "เพิ่มแบรนด์" เพื่อสร้างทันที</p>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-gray-500 mb-1.5">📅 วัน/เดือน/ปี หมดอายุ <span class="text-red-500">*</span></label>
+      <div class="grid grid-cols-3 gap-2">
+        <select id="expiryD" onchange="updateStatus()" class="border border-gray-200 rounded-xl px-2 py-2.5 text-sm bg-gray-50" style="outline:none">
+          <option value="">วันที่</option>
+        </select>
+        <select id="expiryM" onchange="updateStatus()" class="border border-gray-200 rounded-xl px-2 py-2.5 text-sm bg-gray-50" style="outline:none">
+          <option value="">เดือน</option>
+          <option value="1">ม.ค.</option><option value="2">ก.พ.</option>
+          <option value="3">มี.ค.</option><option value="4">เม.ย.</option>
+          <option value="5">พ.ค.</option><option value="6">มิ.ย.</option>
+          <option value="7">ก.ค.</option><option value="8">ส.ค.</option>
+          <option value="9">ก.ย.</option><option value="10">ต.ค.</option>
+          <option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
+        </select>
+        <select id="expiryY" onchange="updateStatus()" class="border border-gray-200 rounded-xl px-2 py-2.5 text-sm bg-gray-50" style="outline:none">
+          <option value="">ปี พ.ศ.</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- สถานะ -->
+  <div class="card">
+    <p class="text-xs font-semibold text-gray-400 mb-2">สถานะสินค้า</p>
+    <div id="statusDisplay"><span class="sbg sbg-n"><span class="dot bg-gray-300"></span>กรุณาระบุวันหมดอายุ</span></div>
+  </div>
+
+  <!-- หมายเหตุ -->
+  <div class="card">
+    <label class="block text-xs font-semibold text-gray-500 mb-1.5">📝 หมายเหตุ (ไม่บังคับ)</label>
+    <textarea id="noteInp" rows="2" placeholder="รายละเอียดเพิ่มเติม เช่น จำนวนชิ้น ล็อตสินค้า"
+      class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50 resize-none" style="outline:none"></textarea>
+  </div>
+
+  <button id="submitBtn" onclick="submitReport()" class="mbtn w-full py-4 rounded-2xl text-base shadow-md">📤 ส่งรายงาน</button>
+
+  <div id="successMsg" style="display:none" class="bg-green-50 border-2 border-green-300 rounded-2xl p-6 text-center">
+    <div class="text-5xl mb-3">✅</div>
+    <p class="font-black text-green-700 text-lg">ส่งรายงานสำเร็จ!</p>
+    <p class="text-green-600 text-sm mt-1 mb-4">ทีมงานได้รับข้อมูลเรียบร้อย</p>
+    <button onclick="resetForm()" class="mbtn px-6 py-2.5 rounded-xl text-sm">➕ ส่งรายงานใหม่</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     VIEW 2 : ADMIN DASHBOARD
+════════════════════════════════════════════ -->
+<div id="v-dashboard" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-4" style="display:none">
+
+  <!-- LOGIN -->
+  <div id="loginSection" class="card text-center py-8">
+    <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-4xl">🔐</div>
+    <h2 class="font-black text-xl text-gray-800">Admin Login</h2>
+    <p class="text-sm text-gray-400 mb-6">ระบบหลังบ้านสำหรับผู้ดูแล</p>
+    <div class="space-y-3 text-left max-w-xs mx-auto">
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Username</label>
+        <input id="loginUser" type="text" value="admin" autocomplete="username"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50" style="outline:none"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Password</label>
+        <input id="loginPass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50" style="outline:none"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <p id="loginErr" style="display:none" class="text-red-500 text-sm text-center font-semibold">❌ รหัสผ่านไม่ถูกต้อง</p>
+      <button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-base" style="border:none;cursor:pointer">🔓 เข้าสู่ระบบ</button>
+    </div>
+    <div class="mt-5 p-3 bg-gray-50 rounded-xl max-w-xs mx-auto">
+      <p class="text-xs text-gray-400">รหัสเริ่มต้น</p>
+      <p class="text-sm font-bold text-gray-600">admin / admin1234</p>
+      <button onclick="resetToDefault()" class="text-xs text-blue-500 mt-1" style="background:none;border:none;cursor:pointer">🔄 รีเซ็ตรหัสผ่านเป็นค่าเริ่มต้น</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashSection" style="display:none" class="space-y-4">
+
+    <!-- stats -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="card"><p class="text-xs text-gray-400">รายงานทั้งหมด</p><p id="st-total" class="text-3xl font-black text-gray-800">0</p></div>
+      <div class="card"><p class="text-xs text-gray-400">หมดอายุแล้ว</p><p id="st-exp" class="text-3xl font-black text-red-600">0</p></div>
+      <div class="card"><p class="text-xs text-gray-400">เคลมแล้ว</p><p id="st-claimed" class="text-3xl font-black text-green-600">0</p></div>
+      <div class="bg-purple-50 rounded-2xl p-4 border border-purple-100">
+        <p class="text-xs text-purple-400">📨 รอเคลม (ส่งแล้ว)</p>
+        <p id="st-wait" class="text-3xl font-black text-purple-700">0</p>
+      </div>
+    </div>
+
+    <!-- bulk actions -->
+    <div class="card">
+      <p class="text-xs font-semibold text-gray-400 mb-2.5">⚡ การดำเนินการ</p>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="downloadAllImages()"
+          style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.78rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
+          📥 ดาวน์โหลดรูปทั้งหมด
+        </button>
+        <button onclick="confirmClaimAll()"
+          style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#f0fdf4;color:#15803d;font-size:.78rem;font-weight:700;border:1.5px solid #86efac;cursor:pointer">
+          ✅ เคลมแล้วทั้งหมด
+        </button>
+        <button onclick="confirmUnclaimAll()"
+          style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#fff7ed;color:#c2410c;font-size:.78rem;font-weight:700;border:1.5px solid #fdba74;cursor:pointer">
+          ↩ ยกเลิกเคลมทั้งหมด
+        </button>
+        <button onclick="confirmSentClaimAll()"
+          style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#faf5ff;color:#7c3aed;font-size:.78rem;font-weight:700;border:1.5px solid #c4b5fd;cursor:pointer">
+          📨 ส่งเคลมบริษัท (ทั้งหมด)
+        </button>
+      </div>
+      <!-- download month/year filter -->
+      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f3f4f6">
+        <p class="text-xs text-gray-400 mb-1.5">📅 กรองเดือน/ปี หมดอายุ สำหรับดาวน์โหลด</p>
+        <div class="flex gap-2 items-center flex-wrap">
+          <select id="dl-month" class="border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs bg-gray-50" style="outline:none">
+            <option value="">ทุกเดือน</option>
+            <option value="1">ม.ค.</option><option value="2">ก.พ.</option><option value="3">มี.ค.</option>
+            <option value="4">เม.ย.</option><option value="5">พ.ค.</option><option value="6">มิ.ย.</option>
+            <option value="7">ก.ค.</option><option value="8">ส.ค.</option><option value="9">ก.ย.</option>
+            <option value="10">ต.ค.</option><option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
+          </select>
+          <select id="dl-year" class="border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs bg-gray-50" style="outline:none">
+            <option value="">ทุกปี</option>
+          </select>
+          <button onclick="downloadFilteredImages()"
+            style="padding:.4rem .85rem;border-radius:.7rem;background:#1d4ed8;color:#fff;font-size:.75rem;font-weight:700;border:none;cursor:pointer">
+            📥 ดาวน์โหลด
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- chip filters -->
+    <div class="card space-y-3">
+      <p class="text-xs font-semibold text-gray-500">🔍 กรองข้อมูล</p>
+      <div>
+        <p class="text-xs text-gray-400 mb-1.5">📍 สาขา <span class="text-gray-300">(เลือกได้หลายสาขา)</span></p>
+        <div id="chip-branch" class="chip-row"></div>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 mb-1.5">🏷️ แบรนด์ <span class="text-gray-300">(เลือกได้หลายแบรนด์)</span></p>
+        <div id="chip-brand" class="chip-row"></div>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 mb-1.5">📋 สถานะเคลม</p>
+        <div id="chip-claim-row" class="chip-row"></div>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 mb-1.5">📅 สถานะหมดอายุ</p>
+        <div id="chip-exp-row" class="chip-row"></div>
+      </div>
+    </div>
+
+    <div id="reportList" class="space-y-3"></div>
+    <div id="emptyMsg" style="display:none" class="text-center py-12 text-gray-300">
+      <div class="text-5xl mb-2">📭</div><p>ไม่พบรายการ</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     VIEW 3 : SETTINGS
+════════════════════════════════════════════ -->
+<div id="v-settings" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-5" style="display:none">
+
+  <div id="settingsGate" style="display:none" class="card text-center py-8">
+    <p class="text-gray-500 mb-3">กรุณา Login ก่อนเข้าหน้าตั้งค่า</p>
+    <button onclick="goTo('dashboard')" class="mbtn px-6 py-2.5 rounded-xl text-sm">🔐 ไปหน้า Login</button>
+  </div>
+
+  <div id="settingsContent" style="display:none" class="space-y-5">
+
+    <!-- branches -->
+    <div class="card overflow-hidden" style="padding:0">
+      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800">📍 จัดการสาขา</div>
+      <div class="p-4 bg-blue-50 border-b border-gray-100">
+        <div class="flex gap-2">
+          <input id="newBName" type="text" placeholder="ชื่อสาขา" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBranch()">
+          <input id="newBCode" type="text" placeholder="รหัส" class="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none">
+          <button onclick="addBranch()" class="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+        </div>
+      </div>
+      <ul id="branchList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:17rem"></ul>
+    </div>
+
+    <!-- brand groups -->
+    <div class="card overflow-hidden" style="padding:0">
+      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800 flex items-center gap-2">
+        🗂️ กลุ่มแบรนด์ (เครือบริษัท)
+        <span class="text-xs font-normal text-gray-400">— กำหนดกลุ่มใน "จัดการแบรนด์" ด้านล่าง</span>
+      </div>
+      <div class="p-4 bg-purple-50 border-b border-gray-100">
+        <div class="flex gap-2">
+          <input id="newGroupName" type="text" placeholder="เช่น เครือ CP, เครือ ThaiBev" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBrandGroup()">
+          <button onclick="addBrandGroup()" class="bg-purple-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+        </div>
+      </div>
+      <ul id="groupList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:12rem"></ul>
+    </div>
+
+    <!-- brands -->
+    <div class="card overflow-hidden" style="padding:0">
+      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800">🏷️ จัดการแบรนด์</div>
+      <div class="p-4 bg-blue-50 border-b border-gray-100">
+        <div class="flex gap-2">
+          <input id="newBrandName" type="text" placeholder="ชื่อแบรนด์" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBrand()">
+          <button onclick="addBrand()" class="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+        </div>
+      </div>
+      <ul id="brandList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:20rem"></ul>
+    </div>
+
+    <!-- change password -->
+    <div class="card overflow-hidden" style="padding:0">
+      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800">🔒 เปลี่ยนรหัสผ่าน</div>
+      <div class="p-4 space-y-2">
+        <input id="np1" type="password" placeholder="รหัสผ่านใหม่" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" style="outline:none">
+        <input id="np2" type="password" placeholder="ยืนยันรหัสผ่าน" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" style="outline:none">
+        <button onclick="changePass()" class="w-full bg-gray-700 text-white rounded-xl py-2.5 text-sm font-semibold" style="border:none;cursor:pointer">เปลี่ยนรหัสผ่าน</button>
+      </div>
+    </div>
+
+    <button onclick="logout()" class="w-full py-3 rounded-xl font-semibold text-sm text-red-500" style="border:2px solid #fecaca;background:#fff;cursor:pointer">
+      🚪 ออกจากระบบ
+    </button>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lb" onclick="this.style.display='none'"><img id="lbImg" src="" alt=""></div>
+
+<!-- Toast -->
+<div id="toast" class="bg-white rounded-2xl shadow-xl px-5 py-3.5 flex items-center gap-3" style="border:1.5px solid #e5e7eb">
+  <span id="toastIcon" class="text-xl">✅</span>
+  <span id="toastMsg" class="text-sm font-semibold text-gray-700"></span>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" onclick="if(event.target===this)closeConfirm()">
+  <div style="background:#fff;border-radius:1.5rem;padding:1.5rem;max-width:20rem;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div id="confirmIcon" class="text-5xl text-center mb-3">⚠️</div>
+    <p id="confirmMsg" style="font-size:.95rem;font-weight:700;color:#1f2937;text-align:center;margin-bottom:.4rem"></p>
+    <p id="confirmSub" style="font-size:.82rem;color:#6b7280;text-align:center;margin-bottom:1.3rem"></p>
+    <div style="display:flex;gap:.75rem">
+      <button onclick="closeConfirm()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#f3f4f6;color:#374151;font-weight:700;font-size:.9rem;border:none;cursor:pointer">ยกเลิก</button>
+      <button id="confirmYes" style="flex:1;padding:.75rem;border-radius:.85rem;color:#fff;font-weight:700;font-size:.9rem;border:none;cursor:pointer">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ JAVASCRIPT ═══ -->
+<script>
+// ══════════════════════════════════════════
+// DATA — localStorage wrapper
+// ══════════════════════════════════════════
+const DEF_BRANCHES=[
+  {id:1,name:'สาขาสยามพารากอน',code:'SYM001',active:true},
+  {id:2,name:'สาขาเซ็นทรัลเวิลด์',code:'CWL002',active:true},
+  {id:3,name:'สาขาเมกาบางนา',code:'MGB003',active:true},
+  {id:4,name:'สาขาฟิวเจอร์พาร์ค',code:'FTP004',active:true},
+  {id:5,name:'สาขาเซ็นทรัลลาดพร้าว',code:'CLP005',active:true},
+  {id:6,name:'สาขาเดอะมอลล์บางกะปิ',code:'TMB006',active:true},
+];
+const DEF_BRANDS=[
+  {id:1,name:'เนสท์เล่ (Nestlé)',active:true},
+  {id:2,name:'ยูนิลีเวอร์ (Unilever)',active:true},
+  {id:3,name:'อายิโนะโมะโต๊ะ (Ajinomoto)',active:true},
+  {id:4,name:'โอสถสภา (Osotspa)',active:true},
+  {id:5,name:'ซีพีเอฟ (CP Foods)',active:true},
+  {id:6,name:'มาม่า (MAMA)',active:true},
+];
+
+function ls(k,def){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):def;}catch(e){return def;}}
+function lsSave(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){toast('พื้นที่เต็ม ลบรายงานเก่าก่อน','red');}}
+
+function getBranches(){return ls('branches',DEF_BRANCHES);}
+function getBrands()  {return ls('brands',DEF_BRANDS);}
+function getReports() {return ls('reports',[]);}
+function getBrandGroups(){return ls('brandGroups',[]);}
+
+function getAdminPass(){
+  if(localStorage.getItem('passChanged')==='1') return ls('adminPass','admin1234');
+  return 'admin1234';
+}
+function resetToDefault(){
+  localStorage.removeItem('adminPass');
+  localStorage.removeItem('passChanged');
+  toast('รีเซ็ตรหัสผ่านเป็น admin1234 แล้ว');
+  document.getElementById('loginErr').style.display='none';
+}
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let isAdmin=false;
+let imgData={i1:null,i2:null,i3:null};
+
+// chip filter state
+let chipBranches=new Set(); // empty = all
+let chipBrands=new Set();   // empty = all
+let chipClaim='';           // '' | '0' | '1' | 'sent'
+let chipExp='';             // '' | '0' | '1'
+
+// ══════════════════════════════════════════
+// CLOCK (Thai timezone)
+// ══════════════════════════════════════════
+const THM=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function nowTH(){return new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Bangkok'}));}
+function updateClock(){
+  const n=nowTH();
+  const D=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  document.getElementById('clock').textContent=
+    `${D[n.getDay()]} ${n.getDate()} ${THM[n.getMonth()+1]} ${n.getFullYear()+543}  `+
+    n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock,1000); updateClock();
+
+// ══════════════════════════════════════════
+// ROUTER
+// ══════════════════════════════════════════
+const TITLES={user:'แจ้งสินค้าหมดอายุ',dashboard:'Admin Dashboard',settings:'ตั้งค่าระบบ'};
+function goTo(view){
+  ['user','dashboard','settings'].forEach(v=>{
+    document.getElementById('v-'+v).style.display=v===view?'block':'none';
+    document.getElementById('nb-'+v).classList.toggle('on',v===view);
+  });
+  document.getElementById('headerTitle').textContent=TITLES[view];
+  if(view==='dashboard'){isAdmin?showDash():showLogin();}
+  if(view==='settings'){
+    if(isAdmin){
+      document.getElementById('settingsGate').style.display='none';
+      document.getElementById('settingsContent').style.display='block';
+      renderBranches(); renderGroups(); renderBrands();
+    } else {
+      document.getElementById('settingsGate').style.display='block';
+      document.getElementById('settingsContent').style.display='none';
+    }
+  }
+  if(view==='user') populateFormSelects();
+}
+function showLogin(){
+  document.getElementById('loginSection').style.display='block';
+  document.getElementById('dashSection').style.display='none';
+  document.getElementById('loginErr').style.display='none';
+  document.getElementById('loginPass').value='';
+}
+function showDash(){
+  document.getElementById('loginSection').style.display='none';
+  document.getElementById('dashSection').style.display='block';
+  // populate dl-year
+  const dy=document.getElementById('dl-year');
+  if(dy.options.length<=1){
+    const ny=nowTH().getFullYear();
+    for(let y=ny-3;y<=ny+4;y++) dy.add(new Option(`${y+543}`,y));
+  }
+  buildChips(); updateStats(); renderReports();
+}
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  if(u==='admin'&&p===getAdminPass()){
+    isAdmin=true;
+    document.getElementById('adminBadge').style.display='flex';
+    showDash();
+  } else {
+    document.getElementById('loginErr').style.display='block';
+    document.getElementById('loginPass').select();
+  }
+}
+function logout(){isAdmin=false;document.getElementById('adminBadge').style.display='none';goTo('user');toast('ออกจากระบบแล้ว');}
+function changePass(){
+  const p1=document.getElementById('np1').value;
+  const p2=document.getElementById('np2').value;
+  if(p1.length<4) return toast('รหัสผ่านต้องมีอย่างน้อย 4 ตัว','red');
+  if(p1!==p2) return toast('รหัสผ่านไม่ตรงกัน','red');
+  lsSave('adminPass',p1); localStorage.setItem('passChanged','1');
+  document.getElementById('np1').value=''; document.getElementById('np2').value='';
+  toast('เปลี่ยนรหัสผ่านสำเร็จ ✅');
+}
+
+// ══════════════════════════════════════════
+// CONFIRM MODAL
+// ══════════════════════════════════════════
+let _confirmCb=null;
+function showConfirm(msg,sub,onYes,icon='⚠️',color='#2563eb'){
+  document.getElementById('confirmIcon').textContent=icon;
+  document.getElementById('confirmMsg').textContent=msg;
+  document.getElementById('confirmSub').textContent=sub||'';
+  document.getElementById('confirmYes').style.background=color;
+  _confirmCb=onYes;
+  document.getElementById('confirmModal').style.display='flex';
+}
+function closeConfirm(){document.getElementById('confirmModal').style.display='none';_confirmCb=null;}
+document.getElementById('confirmYes').onclick=function(){
+  const cb=_confirmCb; closeConfirm(); if(cb) cb();
+};
+
+// ══════════════════════════════════════════
+// BRAND COMBOBOX — ค้นหา + กลุ่ม + สร้างใหม่
+// ══════════════════════════════════════════
+function openBrandDD(){filterBrands();document.getElementById('brandDD').style.display='block';}
+function closeBrandDD(){document.getElementById('brandDD').style.display='none';}
+
+function filterBrands(){
+  const raw=document.getElementById('brandSearch').value||'';
+  const q=raw.toLowerCase().trim();
+  const allBrands=getBrands().filter(b=>b.active);
+  const groups=getBrandGroups();
+  const filtered=q?allBrands.filter(b=>b.name.toLowerCase().includes(q)):allBrands;
+  const dd=document.getElementById('brandDD');
+  dd.innerHTML='';
+
+  function mkItem(b){
+    const d=document.createElement('div'); d.className='bd-item';
+    if(q){
+      const idx=b.name.toLowerCase().indexOf(q);
+      d.innerHTML=b.name.substring(0,idx)
+        +`<b style="color:#1d4ed8">${b.name.substring(idx,idx+q.length)}</b>`
+        +b.name.substring(idx+q.length);
+    } else { d.textContent=b.name; }
+    d.onmousedown=()=>selectBrand(b.id,b.name);
+    return d;
+  }
+
+  if(!q && groups.length>0){
+    // group display
+    const byGroup={};
+    filtered.forEach(b=>{ const gId=b.group_id||0; if(!byGroup[gId])byGroup[gId]=[]; byGroup[gId].push(b); });
+    groups.forEach(g=>{
+      const gBrands=byGroup[g.id]||[];
+      if(!gBrands.length) return;
+      const h=document.createElement('div'); h.className='bd-group-hd'; h.textContent=g.name; dd.appendChild(h);
+      gBrands.forEach(b=>dd.appendChild(mkItem(b)));
+    });
+    const ungrouped=byGroup[0]||[];
+    if(ungrouped.length){
+      if(Object.keys(byGroup).some(k=>parseInt(k)>0)){
+        const h=document.createElement('div'); h.className='bd-group-hd'; h.textContent='อื่นๆ'; dd.appendChild(h);
+      }
+      ungrouped.forEach(b=>dd.appendChild(mkItem(b)));
+    }
+  } else {
+    filtered.forEach(b=>dd.appendChild(mkItem(b)));
+  }
+
+  // add-new option
+  const exactQ=raw.trim();
+  if(exactQ && !allBrands.find(b=>b.name.toLowerCase()===exactQ.toLowerCase())){
+    const d=document.createElement('div'); d.className='bd-add';
+    d.innerHTML=`＋ เพิ่มแบรนด์ใหม่: "<b>${exactQ}</b>"`;
+    d.onmousedown=()=>quickAddBrand(exactQ);
+    dd.appendChild(d);
+  }
+  if(!dd.children.length) dd.innerHTML='<div class="bd-item" style="color:#9ca3af;cursor:default">ไม่พบแบรนด์</div>';
+  dd.style.display='block';
+}
+
+function selectBrand(id,name){
+  document.getElementById('brandId').value=id;
+  document.getElementById('brandSearch').value=name;
+  document.getElementById('brandSearch').style.borderColor='#86efac';
+  closeBrandDD();
+}
+function quickAddBrand(name){
+  if(!name) return;
+  const bs=getBrands();
+  const exist=bs.find(b=>b.name.toLowerCase()===name.toLowerCase());
+  if(exist){selectBrand(exist.id,exist.name);return;}
+  const maxId=bs.length?Math.max(...bs.map(b=>b.id)):0;
+  const nb={id:maxId+1,name,active:true};
+  bs.push(nb); lsSave('brands',bs); selectBrand(nb.id,name);
+  if(document.getElementById('brandList')) renderBrands();
+  toast(`เพิ่มแบรนด์ "${name}" แล้ว`);
+}
+
+// ══════════════════════════════════════════
+// FORM SELECTS
+// ══════════════════════════════════════════
+function populateFormSelects(){
+  const bs=document.getElementById('branchSel');
+  const pB=bs.value;
+  bs.innerHTML='<option value="">— เลือกสาขา —</option>';
+  getBranches().filter(b=>b.active).forEach(b=>bs.add(new Option(b.name,b.id)));
+  bs.value=pB;
+
+  const ds=document.getElementById('expiryD');
+  if(ds.options.length<=1){for(let d=1;d<=31;d++) ds.add(new Option(d,d));}
+
+  const ys=document.getElementById('expiryY');
+  if(ys.options.length<=1){
+    const ny=nowTH().getFullYear();
+    for(let y=ny-2;y<=ny+5;y++) ys.add(new Option(`${y+543}`,y));
+  }
+  const rn=document.getElementById('reporterName');
+  if(rn&&!rn.value) rn.value=localStorage.getItem('reporterName')||'';
+}
+
+// ══════════════════════════════════════════
+// STATUS INDICATOR
+// ══════════════════════════════════════════
+function isExpiredFn(m,y){const n=nowTH();return y<n.getFullYear()||(y===n.getFullYear()&&m<n.getMonth()+1);}
+function updateStatus(){
+  const m=parseInt(document.getElementById('expiryM').value);
+  const y=parseInt(document.getElementById('expiryY').value);
+  const el=document.getElementById('statusDisplay');
+  if(!m||!y){el.innerHTML='<span class="sbg sbg-n"><span class="dot bg-gray-300"></span>กรุณาระบุวันหมดอายุ</span>';return;}
+  const exp=isExpiredFn(m,y);
+  const lbl=`${THM[m]} ${parseInt(y)+543}`;
+  el.innerHTML=exp
+    ?`<span class="sbg sbg-r"><span class="dot dr"></span>❌ หมดอายุแล้ว — ${lbl}</span>`
+    :`<span class="sbg sbg-g"><span class="dot dg"></span>✅ ยังไม่หมดอายุ — ${lbl}</span>`;
+}
+
+// ══════════════════════════════════════════
+// IMAGE COMPRESS + PREVIEW
+// ══════════════════════════════════════════
+function compressImg(file,maxPx=900,q=0.72){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const cv=document.createElement('canvas');
+        let w=img.width,h=img.height;
+        if(w>maxPx||h>maxPx){const s=Math.min(maxPx/w,maxPx/h);w=Math.round(w*s);h=Math.round(h*s);}
+        cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        res(cv.toDataURL('image/jpeg',q));
+      };
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+async function handleImg(input,prevId,nameId,plusId,key){
+  const file=input.files[0]; if(!file) return;
+  const b64=await compressImg(file);
+  imgData[key]=b64;
+  const prev=document.getElementById(prevId);
+  prev.innerHTML=`<img src="${b64}" style="width:100%;height:100%;object-fit:cover;border-radius:.6rem">`;
+  const n=document.getElementById(nameId); n.textContent='✓ '+file.name; n.style.display='block';
+  document.getElementById(plusId).style.display='none';
+  input.closest('.uzone').classList.add('done');
+}
+
+// ══════════════════════════════════════════
+// COMPOSITE IMAGE — รวม 3 รูป เป็น 1:1
+// ══════════════════════════════════════════
+function buildComposite(srcs){
+  return new Promise(resolve=>{
+    const SIZE=600;
+    const cv=document.createElement('canvas');
+    cv.width=SIZE; cv.height=SIZE;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#f1f5f9'; ctx.fillRect(0,0,SIZE,SIZE);
+    const validSrcs=(srcs||[]).filter(Boolean);
+    if(!validSrcs.length){resolve(null);return;}
+    Promise.all(validSrcs.map(src=>new Promise(r=>{
+      const img=new Image(); img.onload=()=>r(img); img.onerror=()=>r(null); img.src=src;
+    }))).then(imgs=>{
+      const vi=imgs.filter(Boolean);
+      if(!vi.length){resolve(null);return;}
+      const n=vi.length;
+      function drawCover(img,x,y,w,h){
+        const ir=img.width/img.height,br=w/h; let sx,sy,sw,sh;
+        if(ir>br){sh=img.height;sw=sh*br;sx=(img.width-sw)/2;sy=0;}
+        else{sw=img.width;sh=sw/br;sx=0;sy=(img.height-sh)/2;}
+        ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
+      }
+      const H=SIZE,W=SIZE,half=Math.floor(W/2),gap=2;
+      if(n===1){drawCover(vi[0],0,0,W,H);}
+      else if(n===2){
+        drawCover(vi[0],0,0,half-gap,H); drawCover(vi[1],half+gap,0,W-half-gap,H);
+        ctx.fillStyle='#fff'; ctx.fillRect(half-gap,0,gap*2,H);
+      } else {
+        drawCover(vi[0],0,0,half-gap,H);
+        drawCover(vi[1],half+gap,0,W-half-gap,Math.floor(H/2)-gap);
+        drawCover(vi[2],half+gap,Math.floor(H/2)+gap,W-half-gap,H-Math.floor(H/2)-gap);
+        ctx.fillStyle='#fff';
+        ctx.fillRect(half-gap,0,gap*2,H);
+        ctx.fillRect(half,Math.floor(H/2)-gap,W-half,gap*2);
+      }
+      resolve(cv.toDataURL('image/jpeg',0.9));
+    });
+  });
+}
+
+async function downloadComposite(reportId){
+  const rep=getReports().find(r=>r.id===reportId); if(!rep) return;
+  toast('กำลังสร้างรูปรวม...');
+  const dataURL=await buildComposite([rep.i1,rep.i2,rep.i3]);
+  if(!dataURL){toast('ไม่มีรูปภาพในรายการนี้','red');return;}
+  const safeName=(rep.branch_name||'report').replace(/\s+/g,'_');
+  const a=document.createElement('a'); a.href=dataURL; a.download=`claim_${safeName}_${reportId}.jpg`; a.click();
+  toast('ดาวน์โหลดสำเร็จ ✅');
+}
+
+async function _batchDownload(reports){
+  if(!reports.length){toast('ไม่มีรายการที่ตรงกัน','red');return;}
+  toast(`กำลังสร้าง ${reports.length} รูปรวม...`);
+  for(let i=0;i<reports.length;i++){
+    const rep=reports[i];
+    const dataURL=await buildComposite([rep.i1,rep.i2,rep.i3]);
+    if(!dataURL) continue;
+    await new Promise(res=>setTimeout(res,120));
+    const a=document.createElement('a');
+    const safeName=(rep.branch_name||'report').replace(/\s+/g,'_');
+    a.href=dataURL; a.download=`claim_${String(i+1).padStart(2,'0')}_${safeName}.jpg`; a.click();
+    await new Promise(res=>setTimeout(res,280));
+  }
+  toast(`ดาวน์โหลดครบ ${reports.length} รายการ ✅`);
+}
+
+async function downloadAllImages(){await _batchDownload(getReports());}
+
+async function downloadFilteredImages(){
+  const dlM=document.getElementById('dl-month').value;
+  const dlY=document.getElementById('dl-year').value;
+  let r=getReports();
+  if(dlM) r=r.filter(x=>String(x.expiry_month)===dlM);
+  if(dlY) r=r.filter(x=>String(x.expiry_year)===dlY);
+  await _batchDownload(r);
+}
+
+// ══════════════════════════════════════════
+// SUBMIT / RESET
+// ══════════════════════════════════════════
+async function submitReport(){
+  const reporter=document.getElementById('reporterName').value.trim();
+  const bId=parseInt(document.getElementById('branchSel').value);
+  const brId=parseInt(document.getElementById('brandId').value);
+  const brName=document.getElementById('brandSearch').value.trim();
+  const d=parseInt(document.getElementById('expiryD').value)||null;
+  const m=parseInt(document.getElementById('expiryM').value);
+  const y=parseInt(document.getElementById('expiryY').value);
+  if(!reporter) return toast('กรุณาระบุชื่อผู้รายงาน','red');
+  if(!bId)      return toast('กรุณาเลือกสาขา','red');
+  if(!brId)     return toast('กรุณาเลือกแบรนด์','red');
+  if(!m)        return toast('กรุณาเลือกเดือนหมดอายุ','red');
+  if(!y)        return toast('กรุณาเลือกปีหมดอายุ','red');
+  if(!imgData.i1&&!imgData.i2&&!imgData.i3) return toast('กรุณาอัพโหลดรูปภาพอย่างน้อย 1 รูป','red');
+  localStorage.setItem('reporterName',reporter);
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='⏳ กำลังบันทึก...';
+  await new Promise(r=>setTimeout(r,300));
+  const branch=getBranches().find(b=>b.id===bId);
+  const brand=getBrands().find(b=>b.id===brId);
+  const exp=isExpiredFn(m,y);
+  const reports=getReports();
+  const maxId=reports.length?Math.max(...reports.map(r=>r.id)):0;
+  reports.unshift({
+    id:maxId+1, reporter_name:reporter,
+    branch_id:bId, branch_name:branch?.name||'',
+    brand_id:brId, brand_name:brand?.name||brName,
+    expiry_day:d, expiry_month:m, expiry_year:y, is_expired:exp,
+    i1:imgData.i1, i2:imgData.i2, i3:imgData.i3,
+    note:document.getElementById('noteInp').value.trim(),
+    claim_status:0, claimed_at:null,
+    sent_claim:0,   sent_at:null,
+    submitted_at:new Date().toISOString(),
+  });
+  lsSave('reports',reports);
+  btn.disabled=false; btn.textContent='📤 ส่งรายงาน';
+  document.getElementById('successMsg').style.display='block';
+  document.getElementById('successMsg').scrollIntoView({behavior:'smooth'});
+}
+
+function resetForm(){
+  document.getElementById('successMsg').style.display='none';
+  document.getElementById('reporterName').value=localStorage.getItem('reporterName')||'';
+  ['branchSel','expiryD','expiryM','expiryY','noteInp'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('brandSearch').value='';
+  document.getElementById('brandSearch').style.borderColor='';
+  document.getElementById('brandId').value='';
+  imgData={i1:null,i2:null,i3:null};
+  [['prev1','📦','inp1','name1','plus1'],['prev2','📊','inp2','name2','plus2'],['prev3','📅','inp3','name3','plus3']].forEach(([pv,em,ip,nm,pl])=>{
+    document.getElementById(pv).innerHTML=`<span style="font-size:1.9rem">${em}</span>`;
+    document.getElementById(ip).value='';
+    const n=document.getElementById(nm); n.textContent=''; n.style.display='none';
+    document.getElementById(pl).style.display='';
+    document.getElementById(pv).closest('.uzone').classList.remove('done');
+  });
+  updateStatus(); window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ══════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════
+function updateStats(){
+  const r=getReports();
+  document.getElementById('st-total').textContent=r.length;
+  document.getElementById('st-exp').textContent=r.filter(x=>x.is_expired).length;
+  document.getElementById('st-claimed').textContent=r.filter(x=>x.claim_status===1).length;
+  document.getElementById('st-wait').textContent=r.filter(x=>x.sent_claim===1).length;
+}
+
+// ══════════════════════════════════════════
+// CHIP FILTERS — build
+// ══════════════════════════════════════════
+function buildChips(){
+  // ── branch chips ──
+  const bc=document.getElementById('chip-branch');
+  bc.innerHTML='';
+  const allBranchBtn=_chip('ทั้งหมด', chipBranches.size===0);
+  allBranchBtn.onclick=()=>{chipBranches.clear();buildChips();renderReports();};
+  bc.appendChild(allBranchBtn);
+  getBranches().filter(b=>b.active).forEach(b=>{
+    const label=b.name.replace('สาขา','');
+    const btn=_chip(label, chipBranches.has(b.id));
+    btn.title=b.name;
+    btn.onclick=()=>{
+      chipBranches.has(b.id)?chipBranches.delete(b.id):chipBranches.add(b.id);
+      buildChips(); renderReports();
+    };
+    bc.appendChild(btn);
+  });
+
+  // ── brand chips ──
+  const brc=document.getElementById('chip-brand');
+  brc.innerHTML='';
+  const allBrandBtn=_chip('ทั้งหมด', chipBrands.size===0);
+  allBrandBtn.onclick=()=>{chipBrands.clear();buildChips();renderReports();};
+  brc.appendChild(allBrandBtn);
+  getBrands().filter(b=>b.active).forEach(b=>{
+    const shortName=b.name.includes('(')?b.name.split('(')[1].replace(')',''):b.name;
+    const btn=_chip(shortName, chipBrands.has(b.id));
+    btn.title=b.name;
+    btn.onclick=()=>{
+      chipBrands.has(b.id)?chipBrands.delete(b.id):chipBrands.add(b.id);
+      buildChips(); renderReports();
+    };
+    brc.appendChild(btn);
+  });
+
+  // ── claim chips ──
+  const cc=document.getElementById('chip-claim-row');
+  cc.innerHTML='';
+  [['','ทั้งหมด'],['0','⏳ รอดำเนินการ'],['1','✅ เคลมแล้ว'],['sent','📨 ส่งเคลมแล้ว']].forEach(([v,lbl])=>{
+    const btn=_chip(lbl, chipClaim===v);
+    btn.onclick=()=>{chipClaim=v;buildChips();renderReports();};
+    cc.appendChild(btn);
+  });
+
+  // ── expiry chips ──
+  const ec=document.getElementById('chip-exp-row');
+  ec.innerHTML='';
+  [['','ทั้งหมด'],['1','🔴 หมดอายุ'],['0','🟢 ยังไม่หมดอายุ']].forEach(([v,lbl])=>{
+    const btn=_chip(lbl, chipExp===v);
+    btn.onclick=()=>{chipExp=v;buildChips();renderReports();};
+    ec.appendChild(btn);
+  });
+}
+function _chip(label,isOn){
+  const btn=document.createElement('button');
+  btn.className='chip'+(isOn?' on':'');
+  btn.textContent=label;
+  return btn;
+}
+
+// ══════════════════════════════════════════
+// RENDER REPORTS
+// ══════════════════════════════════════════
+function renderReports(){
+  let r=getReports();
+  if(chipBranches.size>0) r=r.filter(x=>chipBranches.has(x.branch_id));
+  if(chipBrands.size>0)   r=r.filter(x=>chipBrands.has(x.brand_id));
+  if(chipClaim==='0')    r=r.filter(x=>x.claim_status===0);
+  if(chipClaim==='1')    r=r.filter(x=>x.claim_status===1);
+  if(chipClaim==='sent') r=r.filter(x=>x.sent_claim===1);
+  if(chipExp==='1')      r=r.filter(x=>x.is_expired);
+  if(chipExp==='0')      r=r.filter(x=>!x.is_expired);
+
+  const list=document.getElementById('reportList');
+  const empty=document.getElementById('emptyMsg');
+  list.innerHTML='';
+  if(!r.length){empty.style.display='block';return;}
+  empty.style.display='none';
+
+  r.forEach(rep=>{
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLabel=`${expD}${THM[rep.expiry_month]} ${rep.expiry_year+543}`;
+    const expB=rep.is_expired?'<span class="bx bx-r">🔴 หมดอายุ</span>':'<span class="bx bx-g">🟢 ยังไม่หมดอายุ</span>';
+    const clB=rep.claim_status?'<span class="bx bx-b">✅ เคลมแล้ว</span>':'<span class="bx bx-y">⏳ รอดำเนินการ</span>';
+
+    // sent_claim → แสดง "ส่งเคลมบริษัทแล้ว" + ถ้ายังไม่ claim ให้แสดง "รอเคลม"
+    let sentBadges='';
+    if(rep.sent_claim){
+      sentBadges='<span class="bx bx-p">📨 ส่งเคลมบริษัทแล้ว</span>';
+      if(!rep.claim_status) sentBadges+=' <span class="bx bx-o">⏳ รอเคลม</span>';
+    }
+
+    const clBtn=rep.claim_status
+      ?`<button onclick="toggleClaim(${rep.id})" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">↩ ยกเลิก</button>`
+      :`<button onclick="toggleClaim(${rep.id})" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#22c55e;color:#fff;font-weight:700;border:none;cursor:pointer">✓ เคลมแล้ว</button>`;
+    const sentBtn=rep.sent_claim
+      ?`<button onclick="toggleSentClaim(${rep.id})" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#f3f4f6;color:#7c3aed;font-weight:700;border:none;cursor:pointer">↩ ยกเลิกส่ง</button>`
+      :`<button onclick="toggleSentClaim(${rep.id})" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#7c3aed;color:#fff;font-weight:700;border:none;cursor:pointer">📨 ส่งเคลมบริษัท</button>`;
+
+    const reporterHtml=rep.reporter_name
+      ?`<span style="font-size:.72rem;color:#6b7280;display:flex;align-items:center;gap:.2rem">👤 ${rep.reporter_name}</span>`:'';
+
+    const card=document.createElement('div');
+    card.className='card';
+    card.style.cssText='display:flex;flex-direction:column;gap:.65rem';
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div style="min-width:0;flex:1">
+          <p style="font-weight:700;font-size:.9rem;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name}</p>
+          <p style="font-size:.75rem;color:#9ca3af">${rep.brand_name}</p>
+          ${reporterHtml}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem;flex-shrink:0">
+          ${expB}
+          <span style="font-size:.72rem;color:#9ca3af">${expLabel}</span>
+        </div>
+      </div>
+      <div id="comp-${rep.id}" style="width:100%;aspect-ratio:1/1;background:#f1f5f9;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem">
+        ⏳ กำลังโหลดรูป...
+      </div>
+      <button onclick="downloadComposite(${rep.id})"
+        style="width:100%;padding:.5rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.8rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
+        📥 ดาวน์โหลดรูปรวม (สำหรับแจ้งเคลม)
+      </button>
+      ${rep.note?`<p style="font-size:.78rem;color:#6b7280;background:#f9fafb;border-radius:.6rem;padding:.4rem .7rem">📝 ${rep.note}</p>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f3f4f6;padding-top:.5rem">
+        <div>${clB}${rep.claimed_at?`<p style="font-size:.7rem;color:#9ca3af;margin-top:.1rem">เคลม: ${fmtDate(rep.claimed_at)}</p>`:''}</div>
+        ${clBtn}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>${sentBadges}${rep.sent_at?`<p style="font-size:.7rem;color:#9ca3af;margin-top:.1rem">ส่ง: ${fmtDate(rep.sent_at)}</p>`:''}</div>
+        ${sentBtn}
+      </div>
+      <p style="font-size:.7rem;color:#d1d5db">ส่งเมื่อ ${fmtDate(rep.submitted_at)}</p>
+    `;
+    list.appendChild(card);
+
+    buildComposite([rep.i1,rep.i2,rep.i3]).then(dataURL=>{
+      const el=document.getElementById(`comp-${rep.id}`);
+      if(!el) return;
+      if(!dataURL){el.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';return;}
+      el.innerHTML=`<img src="${dataURL}" onclick="openLB('${dataURL}')"
+        style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" title="คลิกเพื่อขยาย">`;
+    });
+  });
+}
+
+// ══════════════════════════════════════════
+// CLAIM ACTIONS
+// ══════════════════════════════════════════
+function toggleClaim(id){
+  const reports=getReports(); const r=reports.find(x=>x.id===id); if(!r) return;
+  r.claim_status=r.claim_status===0?1:0; r.claimed_at=r.claim_status?new Date().toISOString():null;
+  lsSave('reports',reports); updateStats(); renderReports();
+  toast(r.claim_status?'บันทึก: เคลมแล้ว ✅':'ยกเลิกสถานะเคลมแล้ว');
+}
+function toggleSentClaim(id){
+  const reports=getReports(); const r=reports.find(x=>x.id===id); if(!r) return;
+  r.sent_claim=r.sent_claim?0:1; r.sent_at=r.sent_claim?new Date().toISOString():null;
+  lsSave('reports',reports); updateStats(); renderReports();
+  toast(r.sent_claim?'ส่งเคลมบริษัทแล้ว 📨':'ยกเลิกการส่งเคลม');
+}
+
+// bulk with confirm
+function confirmClaimAll(){
+  const n=getReports().filter(r=>!r.claim_status).length;
+  showConfirm('เคลมแล้วทั้งหมด?',`จะเปลี่ยนสถานะ ${n} รายการที่ยังรอดำเนินการ`,claimAll,'✅','#16a34a');
+}
+function confirmUnclaimAll(){
+  const n=getReports().filter(r=>r.claim_status).length;
+  showConfirm('ยกเลิกเคลมทั้งหมด?',`จะยกเลิกสถานะเคลมของ ${n} รายการ`,unclaimAll,'↩','#dc2626');
+}
+function confirmSentClaimAll(){
+  const n=getReports().filter(r=>!r.sent_claim).length;
+  showConfirm('ส่งเคลมบริษัท (ทั้งหมด)?',`จะส่งเคลม ${n} รายการที่ยังไม่ได้ส่ง`,sentClaimAll,'📨','#7c3aed');
+}
+
+function claimAll(){
+  const reports=getReports(); let changed=0;
+  reports.forEach(r=>{if(!r.claim_status){r.claim_status=1;r.claimed_at=new Date().toISOString();changed++;}});
+  lsSave('reports',reports); updateStats(); renderReports();
+  toast(changed?`เคลมแล้ว ${changed} รายการ ✅`:'ทุกรายการเคลมแล้ว');
+}
+function unclaimAll(){
+  const reports=getReports(); let changed=0;
+  reports.forEach(r=>{if(r.claim_status){r.claim_status=0;r.claimed_at=null;changed++;}});
+  lsSave('reports',reports); updateStats(); renderReports();
+  toast(changed?`ยกเลิกเคลม ${changed} รายการแล้ว`:'ไม่มีรายการที่เคลม');
+}
+function sentClaimAll(){
+  const reports=getReports(); let changed=0;
+  reports.forEach(r=>{if(!r.sent_claim){r.sent_claim=1;r.sent_at=new Date().toISOString();changed++;}});
+  lsSave('reports',reports); updateStats(); renderReports();
+  toast(changed?`ส่งเคลมบริษัทแล้ว ${changed} รายการ 📨`:'ทุกรายการส่งแล้ว');
+}
+
+function openLB(src){document.getElementById('lbImg').src=src;document.getElementById('lb').style.display='flex';}
+function fmtDate(iso){
+  if(!iso) return '-';
+  const d=new Date(iso);
+  return `${d.getDate()} ${THM[d.getMonth()+1]} ${d.getFullYear()+543} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ══════════════════════════════════════════
+// SETTINGS — BRANCHES
+// ══════════════════════════════════════════
+function renderBranches(){
+  const ul=document.getElementById('branchList'); ul.innerHTML='';
+  getBranches().forEach(b=>{
+    const li=document.createElement('li');
+    li.style.cssText='padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem';
+    li.innerHTML=`
+      <div style="min-width:0;flex:1">
+        <p style="font-size:.87rem;font-weight:600;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.name}</p>
+        ${b.code?`<p style="font-size:.72rem;color:#9ca3af">${b.code}</p>`:''}
+      </div>
+      <div style="display:flex;gap:.35rem;align-items:center;flex-shrink:0">
+        <span style="font-size:.7rem;padding:.15rem .5rem;border-radius:99px;background:${b.active?'#dcfce7':'#f3f4f6'};color:${b.active?'#15803d':'#9ca3af'}">${b.active?'ใช้':'ปิด'}</span>
+        <button onclick="toggleBranch(${b.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:${b.active?'#fef9c3':'#dcfce7'};color:${b.active?'#a16207':'#15803d'};font-weight:700;border:none;cursor:pointer">${b.active?'ปิด':'เปิด'}</button>
+        <button onclick="delBranch(${b.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:#fee2e2;color:#dc2626;font-weight:700;border:none;cursor:pointer">ลบ</button>
+      </div>`;
+    ul.appendChild(li);
+  });
+}
+function addBranch(){
+  const name=document.getElementById('newBName').value.trim();
+  const code=document.getElementById('newBCode').value.trim();
+  if(!name) return toast('กรุณาระบุชื่อสาขา','red');
+  const bs=getBranches();
+  if(bs.find(b=>b.name===name)) return toast('ชื่อนี้มีอยู่แล้ว','red');
+  const maxId=bs.length?Math.max(...bs.map(b=>b.id)):0;
+  bs.push({id:maxId+1,name,code:code||null,active:true});
+  lsSave('branches',bs);
+  document.getElementById('newBName').value=''; document.getElementById('newBCode').value='';
+  renderBranches(); populateFormSelects(); toast('เพิ่ม "'+name+'" แล้ว');
+}
+function toggleBranch(id){const bs=getBranches(),b=bs.find(x=>x.id===id);if(b){b.active=!b.active;lsSave('branches',bs);renderBranches();populateFormSelects();}}
+function delBranch(id){lsSave('branches',getBranches().filter(b=>b.id!==id));renderBranches();populateFormSelects();toast('ลบสาขาแล้ว');}
+
+// ══════════════════════════════════════════
+// SETTINGS — BRAND GROUPS
+// ══════════════════════════════════════════
+function renderGroups(){
+  const ul=document.getElementById('groupList'); ul.innerHTML='';
+  const groups=getBrandGroups();
+  if(!groups.length){
+    ul.innerHTML='<li style="padding:.8rem 1rem;font-size:.82rem;color:#9ca3af">ยังไม่มีกลุ่ม — เพิ่มกลุ่มเพื่อจัดหมวดแบรนด์</li>';
+    return;
+  }
+  const brands=getBrands();
+  groups.forEach(g=>{
+    const brandCount=brands.filter(b=>b.group_id===g.id).length;
+    const li=document.createElement('li');
+    li.id=`group-li-${g.id}`;
+    li.style.cssText='padding:.65rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem';
+    li.innerHTML=`
+      <div id="group-name-${g.id}" style="min-width:0;flex:1">
+        <p style="font-size:.87rem;font-weight:600;color:#7c3aed">${g.name}</p>
+        <p style="font-size:.7rem;color:#9ca3af">${brandCount} แบรนด์</p>
+      </div>
+      <div style="display:flex;gap:.35rem;flex-shrink:0">
+        <button onclick="editGroup(${g.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:#ede9fe;color:#7c3aed;font-weight:700;border:none;cursor:pointer">✏️</button>
+        <button onclick="delGroup(${g.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:#fee2e2;color:#dc2626;font-weight:700;border:none;cursor:pointer">ลบ</button>
+      </div>`;
+    ul.appendChild(li);
+  });
+}
+function addBrandGroup(){
+  const name=document.getElementById('newGroupName').value.trim();
+  if(!name) return toast('กรุณาระบุชื่อกลุ่ม','red');
+  const gs=getBrandGroups();
+  if(gs.find(g=>g.name===name)) return toast('ชื่อกลุ่มนี้มีอยู่แล้ว','red');
+  const maxId=gs.length?Math.max(...gs.map(g=>g.id)):0;
+  gs.push({id:maxId+1,name});
+  lsSave('brandGroups',gs);
+  document.getElementById('newGroupName').value='';
+  renderGroups(); renderBrands(); toast('เพิ่มกลุ่ม "'+name+'" แล้ว');
+}
+function editGroup(id){
+  const g=getBrandGroups().find(x=>x.id===id); if(!g) return;
+  const nameEl=document.getElementById(`group-name-${id}`); if(!nameEl) return;
+  nameEl.innerHTML=`
+    <input type="text" id="edit-group-inp-${id}" value="${g.name}"
+      style="border:1.5px solid #7c3aed;border-radius:.5rem;padding:.25rem .6rem;font-size:.85rem;outline:none;width:100%;max-width:160px"
+      onkeydown="if(event.key==='Enter')saveGroupEdit(${id});if(event.key==='Escape')renderGroups()">
+    <button onmousedown="saveGroupEdit(${id})" style="font-size:.72rem;color:#7c3aed;font-weight:700;cursor:pointer;background:none;border:none;margin-left:.3rem">💾</button>`;
+  const inp=document.getElementById(`edit-group-inp-${id}`);
+  if(inp){inp.focus();inp.select();}
+}
+function saveGroupEdit(id){
+  const inp=document.getElementById(`edit-group-inp-${id}`); if(!inp) return;
+  const newName=inp.value.trim(); if(!newName) return;
+  const gs=getBrandGroups(); const g=gs.find(x=>x.id===id);
+  if(g){g.name=newName;lsSave('brandGroups',gs);renderGroups();renderBrands();toast('แก้ไขกลุ่มแล้ว');}
+}
+function delGroup(id){
+  const bs=getBrands();
+  bs.forEach(b=>{if(b.group_id===id) b.group_id=null;});
+  lsSave('brands',bs);
+  lsSave('brandGroups',getBrandGroups().filter(g=>g.id!==id));
+  renderGroups(); renderBrands(); toast('ลบกลุ่มแล้ว');
+}
+
+// ══════════════════════════════════════════
+// SETTINGS — BRANDS
+// ══════════════════════════════════════════
+function renderBrands(){
+  const ul=document.getElementById('brandList'); ul.innerHTML='';
+  const groups=getBrandGroups();
+  getBrands().forEach(b=>{
+    const li=document.createElement('li');
+    li.id=`brand-li-${b.id}`;
+    li.style.cssText='padding:.65rem 1rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem';
+    const groupName=b.group_id?groups.find(g=>g.id===b.group_id)?.name:'';
+    let groupOpts=`<option value="">ไม่มีกลุ่ม</option>`;
+    groups.forEach(g=>{groupOpts+=`<option value="${g.id}"${b.group_id===g.id?' selected':''}>🗂️ ${g.name}</option>`;});
+    li.innerHTML=`
+      <div style="min-width:0;flex:1">
+        <p id="brand-name-${b.id}" style="font-size:.87rem;font-weight:600;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.name}</p>
+        ${groupName?`<p style="font-size:.7rem;color:#7c3aed">🗂️ ${groupName}</p>`:'<p style="font-size:.7rem;color:#d1d5db">ไม่มีกลุ่ม</p>'}
+        ${groups.length?`<select onchange="assignBrandGroup(${b.id},this.value)" style="font-size:.7rem;border:1px solid #e5e7eb;border-radius:.5rem;padding:.15rem .4rem;background:#f9fafb;cursor:pointer;outline:none;margin-top:.25rem;max-width:9rem">${groupOpts}</select>`:''}
+      </div>
+      <div style="display:flex;gap:.35rem;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        <span style="font-size:.7rem;padding:.15rem .5rem;border-radius:99px;background:${b.active?'#dcfce7':'#f3f4f6'};color:${b.active?'#15803d':'#9ca3af'}">${b.active?'ใช้':'ปิด'}</span>
+        <button onclick="editBrand(${b.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:#e0f2fe;color:#0369a1;font-weight:700;border:none;cursor:pointer">✏️</button>
+        <button onclick="toggleBrand(${b.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:${b.active?'#fef9c3':'#dcfce7'};color:${b.active?'#a16207':'#15803d'};font-weight:700;border:none;cursor:pointer">${b.active?'ปิด':'เปิด'}</button>
+        <button onclick="delBrand(${b.id})" style="font-size:.7rem;padding:.2rem .55rem;border-radius:.5rem;background:#fee2e2;color:#dc2626;font-weight:700;border:none;cursor:pointer">ลบ</button>
+      </div>`;
+    ul.appendChild(li);
+  });
+}
+function assignBrandGroup(brandId,groupId){
+  const bs=getBrands(); const b=bs.find(x=>x.id===brandId);
+  if(b){b.group_id=groupId?parseInt(groupId):null;lsSave('brands',bs);renderBrands();toast('กำหนดกลุ่มแล้ว');}
+}
+function editBrand(id){
+  const b=getBrands().find(x=>x.id===id); if(!b) return;
+  const nameEl=document.getElementById(`brand-name-${id}`); if(!nameEl) return;
+  nameEl.innerHTML=`
+    <input type="text" id="edit-brand-inp-${id}" value="${b.name}"
+      style="border:1.5px solid #3b82f6;border-radius:.5rem;padding:.25rem .6rem;font-size:.85rem;outline:none;width:100%;max-width:180px"
+      onkeydown="if(event.key==='Enter')saveBrandEdit(${id});if(event.key==='Escape')renderBrands()">
+    <button onmousedown="saveBrandEdit(${id})" style="font-size:.72rem;color:#2563eb;font-weight:700;cursor:pointer;background:none;border:none;margin-left:.3rem">💾</button>`;
+  const inp=document.getElementById(`edit-brand-inp-${id}`);
+  if(inp){inp.focus();inp.select();}
+}
+function saveBrandEdit(id){
+  const inp=document.getElementById(`edit-brand-inp-${id}`); if(!inp) return;
+  const newName=inp.value.trim(); if(!newName) return;
+  const bs=getBrands(); const b=bs.find(x=>x.id===id);
+  if(b){b.name=newName;lsSave('brands',bs);renderBrands();populateFormSelects();toast('แก้ไขแบรนด์แล้ว');}
+}
+function addBrand(){
+  const name=document.getElementById('newBrandName').value.trim();
+  if(!name) return toast('กรุณาระบุชื่อแบรนด์','red');
+  const bs=getBrands();
+  if(bs.find(b=>b.name===name)) return toast('ชื่อนี้มีอยู่แล้ว','red');
+  const maxId=bs.length?Math.max(...bs.map(b=>b.id)):0;
+  bs.push({id:maxId+1,name,active:true});
+  lsSave('brands',bs);
+  document.getElementById('newBrandName').value='';
+  renderBrands(); populateFormSelects(); toast('เพิ่ม "'+name+'" แล้ว');
+}
+function toggleBrand(id){const bs=getBrands(),b=bs.find(x=>x.id===id);if(b){b.active=!b.active;lsSave('brands',bs);renderBrands();populateFormSelects();}}
+function delBrand(id){lsSave('brands',getBrands().filter(b=>b.id!==id));renderBrands();populateFormSelects();toast('ลบแบรนด์แล้ว');}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+let _tt;
+function toast(msg,type='green'){
+  const t=document.getElementById('toast');
+  document.getElementById('toastIcon').textContent=type==='red'?'❌':'✅';
+  document.getElementById('toastMsg').textContent=msg;
+  t.style.borderColor=type==='red'?'#fca5a5':'#86efac';
+  t.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+populateFormSelects();
+</script>
+</body>
+</html>
