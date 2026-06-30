@@ -479,15 +479,17 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <div id="delReqBody">
     <!-- Admin: pending sold-out requests -->
     <div id="adminSoldOutReqSection" style="display:none">
-      <div style="padding:.6rem 1rem;background:#eff6ff;border-bottom:1px solid #bfdbfe">
-        <p style="font-size:.78rem;font-weight:700;color:#1d4ed8">📦 รายการรอยืนยันขายหมด</p>
+      <div style="padding:.6rem 1rem;background:#eff6ff;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;gap:.5rem">
+        <p style="font-size:.78rem;font-weight:700;color:#1d4ed8;margin:0">📦 รายการรอยืนยันขายหมด</p>
+        <span id="soldOutSubCount" style="font-size:.7rem;color:#fff;background:#1d4ed8;padding:.1rem .45rem;border-radius:99px;font-weight:700;display:none"></span>
       </div>
       <div id="pendingSoldOutList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
     </div>
     <!-- Admin: pending delete requests -->
     <div id="adminDeleteReqSection" style="display:none">
-      <div style="padding:.6rem 1rem;background:#f9fafb;border-bottom:1px solid #fee2e2">
-        <p style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ รายการรอการยืนยันลบ</p>
+      <div style="padding:.6rem 1rem;background:#f9fafb;border-bottom:1px solid #fee2e2;display:flex;align-items:center;gap:.5rem">
+        <p style="font-size:.78rem;font-weight:700;color:#9f1239;margin:0">⚠️ รายการรอการยืนยันลบ</p>
+        <span id="deleteSubCount" style="font-size:.7rem;color:#fff;background:#dc2626;padding:.1rem .45rem;border-radius:99px;font-weight:700;display:none"></span>
       </div>
       <div id="pendingDeleteList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
     </div>
@@ -1121,7 +1123,7 @@ function _drawLogoOnCanvas(ctx,x,y,w,h,cb){
 // srcs = [front, overview, expiry] — null if not uploaded
 // Layout (3 images): expiry LEFT full-height | front TOP-RIGHT + overview BOTTOM-RIGHT
 // ══════════════════════════════════════════
-function buildComposite(srcs,note='',qty='',expiryLabel=''){
+function buildComposite(srcs,note='',qty='',expiryLabel='',branchName=''){
   return new Promise(res=>{
     // srcs must be [front, overview, expiry] with nulls preserved for position info
     const front=srcs[0]||null, ovr=srcs[1]||null, exp=srcs[2]||null;
@@ -1129,7 +1131,7 @@ function buildComposite(srcs,note='',qty='',expiryLabel=''){
     if(!valid.length){res(null);return;}
 
     const PAD=8;
-    const INFO_H=(note||qty||expiryLabel)?56:0;
+    const INFO_H=(note||qty||expiryLabel)?(branchName?76:56):0;
     const QUALITY=0.82;
 
     // Build cell list based on how many images exist
@@ -1205,15 +1207,23 @@ function buildComposite(srcs,note='',qty='',expiryLabel=''){
             // Logo in info bar — right side, vertically centred
             const logoH2=INFO_H-10, logoW2=Math.round(logoH2*520/228);
             const logoX2=CW-logoW2-PAD, logoY2=CH_IMG+5;
-            // Text area left of logo
+            // Branch name (top line, smaller, muted)
+            if(branchName){
+              ctx.fillStyle='#94a3b8'; ctx.font='bold 15px Sarabun,sans-serif';
+              ctx.textAlign='left'; ctx.textBaseline='middle';
+              ctx.fillText('📍 '+branchName, PAD*2, CH_IMG+22, logoX2-PAD*3);
+            }
+            // Main text (bottom line or centred if no branch)
+            const mainY=branchName?(CH_IMG+54):(CH_IMG+INFO_H/2+1);
             ctx.fillStyle='#fff'; ctx.font='bold 20px Sarabun,sans-serif';
+            ctx.textAlign='left'; ctx.textBaseline='middle';
             let txt='';
             if(expiryLabel) txt+=`หมดอายุ: ${expiryLabel}`;
             if(expiryLabel&&(qty||note)) txt+='   ';
             if(qty) txt+=`จำนวน ${qty} ชิ้น`;
             if(qty&&note) txt+='  ';
             if(note) txt+=note;
-            ctx.fillText(txt,PAD*2,CH_IMG+INFO_H/2+1,logoX2-PAD*3);
+            ctx.fillText(txt,PAD*2,mainY,logoX2-PAD*3);
             _drawLogoOnCanvas(ctx,logoX2,logoY2,logoW2,logoH2,()=>{
               res(cv.toDataURL('image/jpeg',QUALITY));
             });
@@ -1283,7 +1293,7 @@ async function _getComposite(rep){
     if(!srcs.some(Boolean)) return null;
     const expD=rep.expiry_day?`${rep.expiry_day} `:'';
     const expLbl=`${expD}${THM[rep.expiry_month]||''} ${rep.expiry_year?rep.expiry_year+543:''}`.trim();
-    du=await buildComposite(srcs,rep.note||'',rep.quantity??'',expLbl);
+    du=await buildComposite(srcs,rep.note||'',rep.quantity??'',expLbl,rep.branch_name||'');
     if(du) _compCache[rep.id]=du;
   }
   return du;
@@ -1404,7 +1414,7 @@ async function _doSubmit({bId,brId,d,m,y,qty,note,reporter,branch,brand,expLbl})
   try{
     const ridRef=db.ref('reports').push();
     const rid=ridRef.key;
-    const compositeDU=await buildComposite([imgData.i1,imgData.i2,imgData.i3],note,qty,expLbl);
+    const compositeDU=await buildComposite([imgData.i1,imgData.i2,imgData.i3],note,qty,expLbl,branch?.name||'');
     const [imgFront,imgOvr,imgExp,imgComp]=await Promise.all([
       uploadToStorage(imgData.i1,`uploads/${rid}_front.jpg`),
       uploadToStorage(imgData.i2,`uploads/${rid}_overview.jpg`),
@@ -1581,16 +1591,16 @@ const _buildQ=[]; let _buildRunning=false;
 async function _drainBuildQ(){
   if(_buildRunning) return; _buildRunning=true;
   while(_buildQ.length){
-    const {id,urls,note,qty,expLabel,resolve}=_buildQ.shift();
+    const {id,urls,note,qty,expLabel,branchName,resolve}=_buildQ.shift();
     if(!document.getElementById('comp-'+id)){resolve(null);continue;}
-    const du=await buildComposite(urls,note,qty,expLabel);
+    const du=await buildComposite(urls,note,qty,expLabel,branchName||'');
     resolve(du);
   }
   _buildRunning=false;
 }
 function queueComposite(rep,expLabel){
   return new Promise(resolve=>{
-    _buildQ.push({id:rep.id,urls:[rep.image_front,rep.image_overview,rep.image_expiry],note:rep.note||'',qty:rep.quantity??'',expLabel,resolve});
+    _buildQ.push({id:rep.id,urls:[rep.image_front,rep.image_overview,rep.image_expiry],note:rep.note||'',qty:rep.quantity??'',expLabel,branchName:rep.branch_name||'',resolve});
     _drainBuildQ();
   });
 }
@@ -2120,6 +2130,11 @@ async function rejectSoldOutReq(id){
 }
 function renderPendingSoldOutReqs(){
   const pending=_reports.filter(r=>r.sold_out_requested&&!r.sold_out);
+  // Update sub-section badge
+  const subCnt=document.getElementById('soldOutSubCount');
+  if(subCnt){if(pending.length){subCnt.textContent=pending.length;subCnt.style.display='inline';}else{subCnt.style.display='none';}}
+  // Update combined delReqCount badge
+  _updateDelReqCount();
   const el=document.getElementById('pendingSoldOutList');
   if(!el) return;
   if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอ</p>';return;}
@@ -2164,10 +2179,20 @@ function renderPendingSoldOutReqs(){
     el.appendChild(div);
   });
 }
+function _updateDelReqCount(){
+  const soldOut=_reports.filter(r=>r.sold_out_requested&&!r.sold_out).length;
+  const delPend=_reports.filter(r=>r.delete_requested).length;
+  const total=soldOut+delPend;
+  const cntEl=document.getElementById('delReqCount');
+  if(cntEl){if(total){cntEl.textContent=total;cntEl.style.display='inline';}else{cntEl.style.display='none';}}
+}
 function renderPendingDeleteReqs(){
   const pending=_reports.filter(r=>r.delete_requested);
-  const cntEl=document.getElementById('delReqCount');
-  if(cntEl){if(pending.length){cntEl.textContent=pending.length;cntEl.style.display='inline';}else{cntEl.style.display='none';}}
+  // Update sub-section badge
+  const subCnt=document.getElementById('deleteSubCount');
+  if(subCnt){if(pending.length){subCnt.textContent=pending.length;subCnt.style.display='inline';}else{subCnt.style.display='none';}}
+  // Update combined delReqCount badge
+  _updateDelReqCount();
   const el=document.getElementById('pendingDeleteList');
   if(!el) return;
   if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอลบ</p>';return;}
