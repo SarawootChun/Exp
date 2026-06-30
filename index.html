@@ -415,17 +415,6 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <div style="background:linear-gradient(135deg,#fff1f2,#fee2e2);padding:.85rem 1rem;font-weight:700;color:#dc2626;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
       <span>🗑</span> แจ้งลบ / คำขอลบรายการ
     </div>
-    <!-- Staff: search and request deletion -->
-    <div style="padding:.85rem 1rem;border-bottom:1px solid #fef2f2">
-      <p style="font-size:.78rem;color:#6b7280;margin-bottom:.65rem">ค้นหารายการที่คุณส่งด้วยชื่อผู้ส่ง แล้วกด "แจ้งลบ" — Admin จะยืนยันก่อนลบจริง</p>
-      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
-        <input id="delreq-name" type="text" placeholder="ชื่อผู้ส่งรายงาน"
-          style="flex:1;border:1.5px solid #e5e7eb;border-radius:.75rem;padding:.5rem .85rem;font-size:.85rem;outline:none"
-          onkeydown="if(event.key==='Enter')searchMyReports()">
-        <button onclick="searchMyReports()" style="padding:.5rem 1rem;border-radius:.75rem;background:#dc2626;color:#fff;font-weight:700;font-size:.82rem;border:none;cursor:pointer">ค้นหา</button>
-      </div>
-      <div id="delreq-list" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem"></div>
-    </div>
     <!-- Admin: pending delete requests -->
     <div id="adminDeleteReqSection" style="display:none">
       <div style="padding:.6rem 1rem;background:#f9fafb;border-bottom:1px solid #fee2e2">
@@ -1688,34 +1677,7 @@ async function submitStaffDeleteReq(){
   calcStats(); updateStats(); renderReports();
   toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน 🔔');
 }
-async function searchMyReports(){
-  const name=document.getElementById('delreq-name').value.trim();
-  const list=document.getElementById('delreq-list');
-  if(!name){list.innerHTML='<p style="font-size:.8rem;color:#9ca3af">กรุณาระบุชื่อผู้ส่ง</p>';return;}
-  list.innerHTML='<p style="font-size:.8rem;color:#9ca3af">⏳ กำลังค้นหา...</p>';
-  try{
-    const snap=await db.ref('reports').orderByChild('reporter_name').equalTo(name).once('value');
-    if(!snap.exists()){list.innerHTML='<p style="font-size:.8rem;color:#9ca3af">ไม่พบรายการที่ส่งโดย "'+name+'"</p>';return;}
-    const items=[];
-    snap.forEach(c=>{const d=c.val();if(!d.delete_requested) items.push({id:c.key,...d});});
-    if(!items.length){list.innerHTML='<p style="font-size:.8rem;color:#6b7280">ไม่พบรายการที่ยังไม่ได้ขอลบ</p>';return;}
-    items.sort((a,b)=>(b.submitted_at||0)-(a.submitted_at||0));
-    list.innerHTML='';
-    items.forEach(rep=>{
-      const expD=rep.expiry_day?`${rep.expiry_day} `:'';
-      const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
-      const div=document.createElement('div');
-      div.style.cssText='background:#f9fafb;border:1px solid #e5e7eb;border-radius:.75rem;padding:.6rem .8rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem';
-      div.innerHTML=`<div style="min-width:0;flex:1"><p style="font-size:.82rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p><p style="font-size:.72rem;color:#6b7280">${rep.brand_name||''} · ${expLabel}</p></div><button onclick="requestDeleteReport('${rep.id}','${name.replace(/'/g,"\\'")}')" style="font-size:.73rem;padding:.3rem .7rem;border-radius:.6rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer;flex-shrink:0">แจ้งลบ</button>`;
-      list.appendChild(div);
-    });
-  }catch(e){list.innerHTML='<p style="font-size:.8rem;color:#dc2626">เกิดข้อผิดพลาด: '+e.message+'</p>';}
-}
-async function requestDeleteReport(id,requesterName){
-  await db.ref('reports/'+id).update({delete_requested:1,delete_requester:requesterName});
-  toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน 🔔');
-  await searchMyReports();
-}
+
 function renderPendingDeleteReqs(){
   const pending=_reports.filter(r=>r.delete_requested);
   const el=document.getElementById('pendingDeleteList');
@@ -1725,9 +1687,40 @@ function renderPendingDeleteReqs(){
   pending.forEach(rep=>{
     const expD=rep.expiry_day?`${rep.expiry_day} `:'';
     const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+    const urg=getUrgency(rep);
+    const days=daysUntilExpiry(rep.expiry_month,rep.expiry_year,rep.expiry_day||1);
+    const urgChip=urg==='expired'
+      ?'<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.1rem .4rem;border-radius:.4rem">หมดอายุแล้ว</span>'
+      :urg==='red'?`<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.1rem .4rem;border-radius:.4rem">🔴 เหลือ ${days} วัน</span>`
+      :urg==='yellow'?`<span style="font-size:.65rem;font-weight:700;background:#fefce8;color:#854d0e;padding:.1rem .4rem;border-radius:.4rem">🟡 เหลือ ${days} วัน</span>`
+      :`<span style="font-size:.65rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">🟢 เหลือ ${days} วัน</span>`;
+    const thumbSrc=rep.composite_img||rep.image_front||rep.image_overview||rep.image_expiry||'';
+    const thumbHtml=thumbSrc
+      ?`<img src="${thumbSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:.65rem;flex-shrink:0;border:1.5px solid #fca5a5" crossorigin="anonymous">`
+      :`<div style="width:64px;height:64px;border-radius:.65rem;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid #fca5a5">📦</div>`;
+    const extraParts=[];
+    if(rep.quantity) extraParts.push(`<span style="font-size:.68rem;color:#1d4ed8;font-weight:600">📦 ${rep.quantity} ชิ้น</span>`);
+    if(rep.note) extraParts.push(`<span style="font-size:.68rem;color:#6b7280">📝 ${rep.note}</span>`);
     const div=document.createElement('div');
-    div.style.cssText='background:#fff;border:1.5px solid #fca5a5;border-radius:.75rem;padding:.65rem .85rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem';
-    div.innerHTML=`<div style="min-width:0;flex:1"><p style="font-size:.82rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p><p style="font-size:.72rem;color:#6b7280">${rep.brand_name||''} · ${expLabel}</p>${rep.delete_requester?`<p style="font-size:.7rem;color:#dc2626;font-weight:600">👤 ${rep.delete_requester}</p>`:''}</div><div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0"><button onclick="confirmAdminDelete('${rep.id}')" style="font-size:.72rem;padding:.25rem .6rem;border-radius:.6rem;background:#dc2626;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยันลบ</button><button onclick="rejectDeleteReq('${rep.id}')" style="font-size:.72rem;padding:.25rem .6rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button></div>`;
+    div.style.cssText='background:#fff;border:1.5px solid #fca5a5;border-radius:.9rem;padding:.75rem .85rem;display:flex;flex-direction:column;gap:.6rem';
+    div.innerHTML=`
+      <div style="display:flex;gap:.65rem;align-items:flex-start">
+        ${thumbHtml}
+        <div style="min-width:0;flex:1">
+          <p style="font-size:.86rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p>
+          <p style="font-size:.75rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.brand_name||''}</p>
+          <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;margin-top:.25rem">
+            <span style="font-size:.68rem;color:#9ca3af">📅 ${expLabel}</span>
+            ${urgChip}
+          </div>
+          ${rep.delete_requester?`<p style="font-size:.73rem;color:#dc2626;font-weight:700;margin-top:.25rem">👤 ${rep.delete_requester}</p>`:''}
+          ${extraParts.length?`<div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.2rem">${extraParts.join('')}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:.4rem;justify-content:flex-end;border-top:1px solid #fee2e2;padding-top:.5rem">
+        <button onclick="rejectDeleteReq('${rep.id}')" style="font-size:.75rem;padding:.3rem .85rem;border-radius:.65rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button>
+        <button onclick="confirmAdminDelete('${rep.id}')" style="font-size:.75rem;padding:.3rem .9rem;border-radius:.65rem;background:#dc2626;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยันลบ</button>
+      </div>`;
     el.appendChild(div);
   });
 }
