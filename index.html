@@ -410,6 +410,19 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
 <!-- VIEW 3 : SETTINGS -->
 <div id="v-settings" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-5" style="display:none">
 
+  <!-- BRANCH STATS — admin only -->
+  <div id="branchStatsCard" class="card overflow-hidden" style="padding:0;display:none">
+    <button onclick="toggleBranchStats()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span>📊</span>
+        <span style="font-weight:700;color:#0369a1;font-size:.9rem">สถิติสาขา</span>
+        <span style="font-size:.68rem;color:#38bdf8;background:#f0f9ff;padding:.1rem .45rem;border-radius:99px;font-weight:600;border:1px solid #bae6fd">คลิกเพื่อพับ/ขยาย</span>
+      </div>
+      <span id="branchStats-arrow" style="font-size:1rem;color:#7dd3fc;transition:transform .25s">▲</span>
+    </button>
+    <div id="branchStatsList" style="padding:.5rem .75rem .75rem"></div>
+  </div>
+
   <!-- EXPIRED ITEMS — admin only -->
   <div id="expiredSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
     <button onclick="toggleExpiredSettings()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
@@ -440,17 +453,30 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
 
   <!-- QTY + SOLD-OUT + DELETE REQUEST SECTION — admin only -->
   <div id="pendingReqSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
-    <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);padding:.85rem 1rem;font-weight:700;color:#15803d;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
-      <span>📊</span> รายการรอยืนยันจำนวนคงเหลือ
+    <button onclick="togglePendingReqSettings()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span>📊</span>
+        <span style="font-weight:700;color:#15803d;font-size:.9rem">รายการรอยืนยันจำนวนคงเหลือ</span>
+        <span id="pendingQtyCount" style="font-size:.7rem;color:#fff;background:#16a34a;padding:.1rem .5rem;border-radius:99px;font-weight:700;display:none"></span>
+      </div>
+      <span id="pendingReq-arrow" style="font-size:1rem;color:#86efac;transition:transform .25s">▲</span>
+    </button>
+    <div id="pendingReqBody">
+      <div id="pendingQtyList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
     </div>
-    <div id="pendingQtyList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
   </div>
 
   <!-- DELETE REQUEST SECTION — always visible -->
   <div id="delReqSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
-    <div style="background:linear-gradient(135deg,#fff1f2,#fee2e2);padding:.85rem 1rem;font-weight:700;color:#dc2626;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
-      <span>🗑</span> แจ้งลบ / คำขอลบรายการ
-    </div>
+    <button onclick="toggleDelReqSettings()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#fff1f2,#fee2e2);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span>🗑</span>
+        <span style="font-weight:700;color:#dc2626;font-size:.9rem">แจ้งลบ / คำขอลบรายการ</span>
+        <span id="delReqCount" style="font-size:.7rem;color:#fff;background:#dc2626;padding:.1rem .5rem;border-radius:99px;font-weight:700;display:none"></span>
+      </div>
+      <span id="delReq-arrow" style="font-size:1rem;color:#fca5a5;transition:transform .25s">▲</span>
+    </button>
+    <div id="delReqBody">
     <!-- Admin: pending sold-out requests -->
     <div id="adminSoldOutReqSection" style="display:none">
       <div style="padding:.6rem 1rem;background:#eff6ff;border-bottom:1px solid #bfdbfe">
@@ -464,6 +490,7 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
         <p style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ รายการรอการยืนยันลบ</p>
       </div>
       <div id="pendingDeleteList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
+    </div>
     </div>
   </div>
 
@@ -485,47 +512,67 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
   </div>
 
   <div id="settingsContent" style="display:none" class="space-y-5">
-    <div class="card overflow-hidden" style="padding:0">
-      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800">📍 จัดการสาขา</div>
-      <div class="p-4 bg-blue-50 border-b border-gray-100">
-        <div class="flex gap-2">
-          <input id="newBName" type="text" placeholder="ชื่อสาขา" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBranch()">
-          <input id="newBCode" type="text" placeholder="รหัส" class="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none">
-          <button onclick="addBranch()" class="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+    <div id="branchManageCard" class="card overflow-hidden" style="padding:0">
+      <button onclick="toggleManageSection('branchManage')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #f3f4f6;background:#fff;border-top:none;border-left:none;border-right:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <span style="font-weight:700;color:#1f2937;font-size:.9rem">📍 จัดการสาขา</span>
+        <span id="branchManage-arrow" style="font-size:1rem;color:#9ca3af;transition:transform .25s">▲</span>
+      </button>
+      <div id="branchManage-body">
+        <div class="p-4 bg-blue-50 border-b border-gray-100">
+          <div class="flex gap-2">
+            <input id="newBName" type="text" placeholder="ชื่อสาขา" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBranch()">
+            <input id="newBCode" type="text" placeholder="รหัส" class="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none">
+            <button onclick="addBranch()" class="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+          </div>
         </div>
+        <ul id="branchList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:17rem"></ul>
       </div>
-      <ul id="branchList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:17rem"></ul>
     </div>
 
-    <div class="card overflow-hidden" style="padding:0">
-      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800 flex items-center gap-2">
-        🗂️ กลุ่มแบรนด์ (เครือบริษัท)
-        <span class="text-xs font-normal text-gray-400">— กำหนดกลุ่มใน "จัดการแบรนด์" ด้านล่าง</span>
-      </div>
-      <div class="p-4 bg-purple-50 border-b border-gray-100">
-        <div class="flex gap-2">
-          <input id="newGroupName" type="text" placeholder="เช่น เครือ CP, เครือ ThaiBev" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBrandGroup()">
-          <button onclick="addBrandGroup()" class="bg-purple-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+    <div id="groupManageCard" class="card overflow-hidden" style="padding:0">
+      <button onclick="toggleManageSection('groupManage')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #f3f4f6;background:#fff;border-top:none;border-left:none;border-right:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span style="font-weight:700;color:#1f2937;font-size:.9rem">🗂️ กลุ่มแบรนด์ (เครือบริษัท)</span>
+          <span style="font-size:.7rem;color:#9ca3af">— กำหนดกลุ่มใน "จัดการแบรนด์"</span>
         </div>
+        <span id="groupManage-arrow" style="font-size:1rem;color:#9ca3af;transition:transform .25s">▲</span>
+      </button>
+      <div id="groupManage-body">
+        <div class="p-4 bg-purple-50 border-b border-gray-100">
+          <div class="flex gap-2">
+            <input id="newGroupName" type="text" placeholder="เช่น เครือ CP, เครือ ThaiBev" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBrandGroup()">
+            <button onclick="addBrandGroup()" class="bg-purple-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+          </div>
+        </div>
+        <ul id="groupList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:12rem"></ul>
       </div>
-      <ul id="groupList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:12rem"></ul>
     </div>
 
-    <div class="card overflow-hidden" style="padding:0">
-      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800">🏷️ จัดการแบรนด์</div>
-      <div class="p-4 bg-blue-50 border-b border-gray-100">
-        <div class="flex gap-2">
-          <input id="newBrandName" type="text" placeholder="ชื่อแบรนด์" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBrand()">
-          <button onclick="addBrand()" class="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+    <div id="brandManageCard" class="card overflow-hidden" style="padding:0">
+      <button onclick="toggleManageSection('brandManage')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #f3f4f6;background:#fff;border-top:none;border-left:none;border-right:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <span style="font-weight:700;color:#1f2937;font-size:.9rem">🏷️ จัดการแบรนด์</span>
+        <span id="brandManage-arrow" style="font-size:1rem;color:#9ca3af;transition:transform .25s">▲</span>
+      </button>
+      <div id="brandManage-body">
+        <div class="p-4 bg-blue-50 border-b border-gray-100">
+          <div class="flex gap-2">
+            <input id="newBrandName" type="text" placeholder="ชื่อแบรนด์" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm" style="outline:none" onkeydown="if(event.key==='Enter')addBrand()">
+            <button onclick="addBrand()" class="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold text-xl" style="border:none;cursor:pointer">+</button>
+          </div>
         </div>
+        <ul id="brandList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:20rem"></ul>
       </div>
-      <ul id="brandList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:20rem"></ul>
     </div>
 
     <div id="adminAccountsCard" class="card overflow-hidden" style="padding:0;display:none">
-      <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800 flex items-center gap-2">
-        🔐 จัดการ Admin ID <span class="text-xs font-normal text-gray-400">— เฉพาะ Owner เท่านั้น</span>
-      </div>
+      <button onclick="toggleManageSection('adminAccounts')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid #f3f4f6;background:#fff;border-top:none;border-left:none;border-right:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span style="font-weight:700;color:#1f2937;font-size:.9rem">🔐 จัดการ Admin ID</span>
+          <span style="font-size:.7rem;color:#9ca3af">— เฉพาะ Owner</span>
+        </div>
+        <span id="adminAccounts-arrow" style="font-size:1rem;color:#9ca3af;transition:transform .25s">▲</span>
+      </button>
+      <div id="adminAccounts-body">
       <div class="p-4 bg-indigo-50 border-b border-gray-100 space-y-2">
         <p class="text-xs font-semibold text-gray-500 mb-1">สร้าง Admin ใหม่</p>
         <div class="flex gap-2">
@@ -535,6 +582,7 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
         </div>
       </div>
       <ul id="adminAccountList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:14rem"></ul>
+      </div>
     </div>
 
     <button onclick="logout()" class="w-full py-3 rounded-xl font-semibold text-sm text-red-500" style="border:2px solid #fecaca;background:#fff;cursor:pointer">
@@ -707,7 +755,7 @@ function startRealtimeReports(){
     _reports=arr.slice(0,500);
     calcStats(); updateStats(); buildFilters(); renderReports();
     const settingsVisible=document.getElementById('v-settings')&&document.getElementById('v-settings').style.display!=='none';
-    if(settingsVisible&&isAdmin){renderPendingSoldOutReqs();renderPendingDeleteReqs();renderPendingQtyReqs();renderExpiredInSettings();renderSoldOutInSettings();}
+    if(settingsVisible&&isAdmin){renderBranchStats();renderPendingSoldOutReqs();renderPendingDeleteReqs();renderPendingQtyReqs();renderExpiredInSettings();renderSoldOutInSettings();}
   });
 }
 function stopRealtimeReports(){
@@ -805,10 +853,11 @@ function showSettings(){
   // Delete request section always visible
   document.getElementById('delReqSettingsCard').style.display='block';
   // Admin-only sections
+  document.getElementById('branchStatsCard').style.display=isAdmin?'block':'none';
   document.getElementById('expiredSettingsCard').style.display=isAdmin?'block':'none';
   document.getElementById('soldOutSettingsCard').style.display=isAdmin?'block':'none';
   document.getElementById('pendingReqSettingsCard').style.display=isAdmin?'block':'none';
-  if(isAdmin){renderExpiredInSettings();renderSoldOutInSettings();renderPendingQtyReqs();renderPendingDeleteReqs();renderPendingSoldOutReqs();}
+  if(isAdmin){renderBranchStats();renderExpiredInSettings();renderSoldOutInSettings();renderPendingQtyReqs();renderPendingDeleteReqs();renderPendingSoldOutReqs();}
   document.getElementById('adminSoldOutReqSection').style.display=isAdmin?'block':'none';
   document.getElementById('adminDeleteReqSection').style.display=isAdmin?'block':'none';
   // Login form vs admin content
@@ -1871,6 +1920,8 @@ async function rejectQtyReq(id){
 }
 function renderPendingQtyReqs(){
   const pending=_reports.filter(r=>r.qty_req_value!=null&&r.remaining_quantity==null);
+  const cntEl=document.getElementById('pendingQtyCount');
+  if(cntEl){if(pending.length){cntEl.textContent=pending.length;cntEl.style.display='inline';}else{cntEl.style.display='none';}}
   const el=document.getElementById('pendingQtyList');
   if(!el) return;
   if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอ</p>';return;}
@@ -2115,6 +2166,8 @@ function renderPendingSoldOutReqs(){
 }
 function renderPendingDeleteReqs(){
   const pending=_reports.filter(r=>r.delete_requested);
+  const cntEl=document.getElementById('delReqCount');
+  if(cntEl){if(pending.length){cntEl.textContent=pending.length;cntEl.style.display='inline';}else{cntEl.style.display='none';}}
   const el=document.getElementById('pendingDeleteList');
   if(!el) return;
   if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอลบ</p>';return;}
@@ -2458,6 +2511,130 @@ function renderSoldOutInSettings(){
 }
 
 // ══════════════════════════════════════════
+// BRANCH STATS
+// ══════════════════════════════════════════
+function toggleBranchStats(){
+  const body=document.getElementById('branchStatsList');
+  const arrow=document.getElementById('branchStats-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  arrow.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+  localStorage.setItem('branchStatsOpen',isOpen?'0':'1');
+}
+function initBranchStats(){
+  const saved=localStorage.getItem('branchStatsOpen');
+  if(saved==='0'){
+    const body=document.getElementById('branchStatsList');
+    const arrow=document.getElementById('branchStats-arrow');
+    if(body) body.style.display='none';
+    if(arrow) arrow.style.transform='rotate(180deg)';
+  }
+}
+function renderBranchStats(){
+  const el=document.getElementById('branchStatsList');
+  if(!el) return;
+  if(!_branches.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ยังไม่มีสาขา</p>';return;}
+  const activeBranches=_branches.filter(b=>b.active);
+  if(!activeBranches.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ยังไม่มีสาขา</p>';return;}
+  // Build stats per branch
+  const rows=activeBranches.map(br=>{
+    const brReps=_reports.filter(r=>r.branch_id===br.id);
+    const total=brReps.length;
+    const soldOut=brReps.filter(r=>r.sold_out).length;
+    const expired=brReps.filter(r=>isExpiredFn(r.expiry_month,r.expiry_year,r.expiry_day||null)).length;
+    const active=total-soldOut-expired;
+    return {name:br.name,total,soldOut,expired,active:Math.max(0,active)};
+  }).filter(r=>r.total>0);
+  if(!rows.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ยังไม่มีรายการ</p>';return;}
+  el.innerHTML='';
+  // Header
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:1fr repeat(4,60px);gap:.25rem;padding:.4rem .5rem;background:#e0f2fe;border-radius:.6rem;margin-bottom:.4rem;font-size:.7rem;font-weight:700;color:#0369a1;text-align:center';
+  hdr.innerHTML='<span style="text-align:left">สาขา</span><span>ทั้งหมด</span><span style="color:#15803d">ปกติ</span><span style="color:#dc2626">หมดอายุ</span><span style="color:#1d4ed8">ขายหมด</span>';
+  el.appendChild(hdr);
+  rows.forEach(r=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:1fr repeat(4,60px);gap:.25rem;padding:.4rem .5rem;border-bottom:1px solid #f0f9ff;font-size:.78rem;text-align:center;align-items:center';
+    const shortName=r.name.replace('ABCD Petshop','').replace('สาขา','').trim()||r.name;
+    row.innerHTML=`<span style="text-align:left;font-weight:600;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${shortName}</span><span style="font-weight:700;color:#374151">${r.total}</span><span style="font-weight:700;color:#15803d">${r.active}</span><span style="font-weight:700;color:${r.expired?'#dc2626':'#9ca3af'}">${r.expired}</span><span style="font-weight:700;color:${r.soldOut?'#1d4ed8':'#9ca3af'}">${r.soldOut}</span>`;
+    el.appendChild(row);
+  });
+  // Total row
+  const totals=rows.reduce((a,r)=>({total:a.total+r.total,active:a.active+r.active,expired:a.expired+r.expired,soldOut:a.soldOut+r.soldOut}),{total:0,active:0,expired:0,soldOut:0});
+  const tot=document.createElement('div');
+  tot.style.cssText='display:grid;grid-template-columns:1fr repeat(4,60px);gap:.25rem;padding:.4rem .5rem;background:#f0f9ff;border-radius:.6rem;margin-top:.3rem;font-size:.78rem;font-weight:700;text-align:center;align-items:center';
+  tot.innerHTML=`<span style="text-align:left;color:#0369a1">รวมทั้งหมด</span><span style="color:#374151">${totals.total}</span><span style="color:#15803d">${totals.active}</span><span style="color:${totals.expired?'#dc2626':'#9ca3af'}">${totals.expired}</span><span style="color:${totals.soldOut?'#1d4ed8':'#9ca3af'}">${totals.soldOut}</span>`;
+  el.appendChild(tot);
+}
+
+// ══════════════════════════════════════════
+// PENDING REQ SETTINGS TOGGLE
+// ══════════════════════════════════════════
+function togglePendingReqSettings(){
+  const body=document.getElementById('pendingReqBody');
+  const arrow=document.getElementById('pendingReq-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  arrow.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+  localStorage.setItem('pendingReqOpen',isOpen?'0':'1');
+}
+function initPendingReqSettings(){
+  const saved=localStorage.getItem('pendingReqOpen');
+  if(saved==='0'){
+    const body=document.getElementById('pendingReqBody');
+    const arrow=document.getElementById('pendingReq-arrow');
+    if(body) body.style.display='none';
+    if(arrow) arrow.style.transform='rotate(180deg)';
+  }
+}
+
+// ══════════════════════════════════════════
+// DEL REQ SETTINGS TOGGLE
+// ══════════════════════════════════════════
+function toggleDelReqSettings(){
+  const body=document.getElementById('delReqBody');
+  const arrow=document.getElementById('delReq-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  arrow.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+  localStorage.setItem('delReqOpen',isOpen?'0':'1');
+}
+function initDelReqSettings(){
+  const saved=localStorage.getItem('delReqOpen');
+  if(saved==='0'){
+    const body=document.getElementById('delReqBody');
+    const arrow=document.getElementById('delReq-arrow');
+    if(body) body.style.display='none';
+    if(arrow) arrow.style.transform='rotate(180deg)';
+  }
+}
+
+// ══════════════════════════════════════════
+// MANAGE SECTION GENERIC TOGGLE (สาขา/กลุ่ม/แบรนด์/Admin)
+// ══════════════════════════════════════════
+function toggleManageSection(key){
+  const body=document.getElementById(key+'-body');
+  const arrow=document.getElementById(key+'-arrow');
+  if(!body) return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  if(arrow) arrow.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+  localStorage.setItem('manage_'+key,isOpen?'0':'1');
+}
+function initManageSection(key){
+  const saved=localStorage.getItem('manage_'+key);
+  if(saved==='0'){
+    const body=document.getElementById(key+'-body');
+    const arrow=document.getElementById(key+'-arrow');
+    if(body) body.style.display='none';
+    if(arrow) arrow.style.transform='rotate(180deg)';
+  }
+}
+function initAllManageSections(){
+  ['branchManage','groupManage','brandManage','adminAccounts'].forEach(k=>initManageSection(k));
+}
+
+// ══════════════════════════════════════════
 // HOW TO USE TOGGLE
 // ══════════════════════════════════════════
 function toggleHowTo(){
@@ -2484,6 +2661,10 @@ async function init(){
   initHowTo();
   initExpiredSettings();
   initSoldOutSettings();
+  initBranchStats();
+  initPendingReqSettings();
+  initDelReqSettings();
+  initAllManageSections();
   await seedIfEmpty();
   await Promise.all([loadAll(), tryRestoreSession()]);
   populateFormSelects();
