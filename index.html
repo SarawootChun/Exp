@@ -73,17 +73,26 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
         <div id="clock" class="text-xs text-gray-400">--:--:--</div>
       </div>
     </div>
-    <div id="adminBadge" style="display:none" class="bg-blue-50 border border-blue-200 rounded-xl px-3 py-1 flex items-center gap-1.5">
-      <span class="w-2 h-2 bg-blue-500 rounded-full inline-block"></span>
-      <span id="adminBadgeLabel" class="text-xs font-semibold text-blue-700">Admin</span>
-      <button onclick="logout()" style="margin-left:.25rem;color:#9ca3af;font-weight:700;background:none;border:none;cursor:pointer;font-size:.9rem">✕</button>
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <!-- Bell notification (admin only) -->
+      <button id="bellBtn" onclick="goTo('settings');setTimeout(()=>document.getElementById('delReqSettingsCard').scrollIntoView({behavior:'smooth'}),200)"
+        style="display:none;position:relative;background:none;border:none;cursor:pointer;padding:.3rem .4rem;border-radius:.6rem;-webkit-tap-highlight-color:transparent"
+        title="แจ้งเตือน">
+        <span style="font-size:1.4rem">🔔</span>
+        <span id="bellCount" style="position:absolute;top:0;right:0;background:#dc2626;color:#fff;font-size:.55rem;font-weight:900;border-radius:99px;min-width:1.1rem;height:1.1rem;display:flex;align-items:center;justify-content:center;padding:0 .2rem">0</span>
+      </button>
+      <div id="adminBadge" style="display:none" class="bg-blue-50 border border-blue-200 rounded-xl px-3 py-1 flex items-center gap-1.5">
+        <span class="w-2 h-2 bg-blue-500 rounded-full inline-block"></span>
+        <span id="adminBadgeLabel" class="text-xs font-semibold text-blue-700">Admin</span>
+        <button onclick="logout()" style="margin-left:.25rem;color:#9ca3af;font-weight:700;background:none;border:none;cursor:pointer;font-size:.9rem">✕</button>
+      </div>
     </div>
   </div>
 </header>
 
 <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 flex">
   <button class="nb on" id="nb-user"      onclick="goTo('user')">      <div class="text-xl">📤</div><div>ส่งรายงาน</div></button>
-  <button class="nb"    id="nb-dashboard" onclick="goTo('dashboard')"> <div class="text-xl">📊</div><div>Admin</div></button>
+  <button class="nb"    id="nb-dashboard" onclick="goTo('dashboard')"> <div class="text-xl">📋</div><div>รายงานสินค้า</div></button>
   <button class="nb"    id="nb-settings"  onclick="goTo('settings')">  <div class="text-xl">⚙️</div><div>ตั้งค่า</div></button>
 </nav>
 
@@ -277,53 +286,11 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <button onclick="resetForm()" class="mbtn px-6 py-2.5 rounded-xl text-sm">➕ ส่งรายงานใหม่</button>
   </div>
 
-  <!-- REQUEST DELETE SECTION -->
-  <div class="card" style="padding:0;overflow:hidden;border:1.5px solid #fee2e2">
-    <button id="delreq-toggle" onclick="toggleDelReqPanel()"
-      style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#fff1f2,#fee2e2);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
-      <div style="display:flex;align-items:center;gap:.6rem">
-        <span style="font-size:1.2rem">🗑</span>
-        <span style="font-weight:700;font-size:.92rem;color:#dc2626">แจ้งขอลบรายการ</span>
-        <span style="font-size:.72rem;color:#f87171;background:#fee2e2;padding:.1rem .5rem;border-radius:99px;font-weight:600">Admin ต้องยืนยัน</span>
-      </div>
-      <span id="delreq-arrow" style="font-size:1rem;color:#f87171;transition:transform .25s">▼</span>
-    </button>
-    <div id="delreq-body" style="display:none;padding:.75rem 1rem 1rem">
-      <p style="font-size:.8rem;color:#6b7280;margin-bottom:.75rem">ค้นหารายการที่คุณส่งไว้ด้วยชื่อผู้ส่ง แล้วเลือกรายการที่ต้องการขอลบ</p>
-      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
-        <input id="delreq-name" type="text" placeholder="ชื่อผู้ส่งรายงาน" style="flex:1;border:1.5px solid #e5e7eb;border-radius:.75rem;padding:.5rem .85rem;font-size:.85rem;outline:none">
-        <button onclick="searchMyReports()" style="padding:.5rem 1rem;border-radius:.75rem;background:#dc2626;color:#fff;font-weight:700;font-size:.82rem;border:none;cursor:pointer">ค้นหา</button>
-      </div>
-      <div id="delreq-list" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem"></div>
-    </div>
-  </div>
 </div>
 
-<!-- VIEW 2 : ADMIN DASHBOARD -->
+<!-- VIEW 2 : รายงานสินค้า (accessible to all) -->
 <div id="v-dashboard" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-4" style="display:none">
-  <div id="loginSection" class="card text-center py-8">
-    <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-4xl">🔐</div>
-    <h2 class="font-black text-xl text-gray-800">Admin Login</h2>
-    <p class="text-sm text-gray-400 mb-6">ระบบหลังบ้านสำหรับผู้ดูแล</p>
-    <div class="space-y-3 text-left max-w-xs mx-auto">
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Username</label>
-        <input id="loginUser" type="text" placeholder="Username" autocomplete="username"
-          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50" style="outline:none"
-          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Password</label>
-        <input id="loginPass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"
-          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50" style="outline:none"
-          onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
-      <p id="loginErr" style="display:none" class="text-red-500 text-sm text-center font-semibold">❌ รหัสผ่านไม่ถูกต้อง</p>
-      <button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-base" style="border:none;cursor:pointer">🔓 เข้าสู่ระบบ</button>
-    </div>
-  </div>
-
-  <div id="dashSection" style="display:none" class="space-y-4">
+  <div id="dashSection" class="space-y-4">
     <div class="grid grid-cols-2 gap-3">
       <div class="card"><p class="text-xs text-gray-400">รายงานทั้งหมด</p><p id="st-total" class="text-3xl font-black text-gray-800">0</p></div>
       <div class="card"><p class="text-xs text-gray-400">หมดอายุแล้ว</p><p id="st-exp" class="text-3xl font-black text-red-600">0</p></div>
@@ -358,8 +325,8 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
       <span style="font-size:.82rem;font-weight:700;color:#9f1239">มีคำขอลบ <span id="st-del-req">0</span> รายการ — แตะเพื่อดู</span>
     </div>
 
-    <div class="card">
-      <p class="text-xs font-semibold text-gray-400 mb-2.5">⚡ การดำเนินการ</p>
+    <div id="adminActionsCard" style="display:none" class="card">
+      <p class="text-xs font-semibold text-gray-400 mb-2.5">⚡ การดำเนินการ (Admin)</p>
       <div class="flex gap-2 flex-wrap">
         <button onclick="downloadAllImages_JPG()"
           style="display:flex;align-items:center;gap:.3rem;padding:.45rem .85rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-size:.78rem;font-weight:700;border:1.5px solid #bfdbfe;cursor:pointer">
@@ -442,10 +409,49 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
 
 <!-- VIEW 3 : SETTINGS -->
 <div id="v-settings" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-5" style="display:none">
-  <div id="settingsGate" style="display:none" class="card text-center py-8">
-    <p class="text-gray-500 mb-3">กรุณา Login ก่อนเข้าหน้าตั้งค่า</p>
-    <button onclick="goTo('dashboard')" class="mbtn px-6 py-2.5 rounded-xl text-sm">🔐 ไปหน้า Login</button>
+
+  <!-- DELETE REQUEST SECTION — always visible -->
+  <div id="delReqSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
+    <div style="background:linear-gradient(135deg,#fff1f2,#fee2e2);padding:.85rem 1rem;font-weight:700;color:#dc2626;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
+      <span>🗑</span> แจ้งลบ / คำขอลบรายการ
+    </div>
+    <!-- Staff: search and request deletion -->
+    <div style="padding:.85rem 1rem;border-bottom:1px solid #fef2f2">
+      <p style="font-size:.78rem;color:#6b7280;margin-bottom:.65rem">ค้นหารายการที่คุณส่งด้วยชื่อผู้ส่ง แล้วกด "แจ้งลบ" — Admin จะยืนยันก่อนลบจริง</p>
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+        <input id="delreq-name" type="text" placeholder="ชื่อผู้ส่งรายงาน"
+          style="flex:1;border:1.5px solid #e5e7eb;border-radius:.75rem;padding:.5rem .85rem;font-size:.85rem;outline:none"
+          onkeydown="if(event.key==='Enter')searchMyReports()">
+        <button onclick="searchMyReports()" style="padding:.5rem 1rem;border-radius:.75rem;background:#dc2626;color:#fff;font-weight:700;font-size:.82rem;border:none;cursor:pointer">ค้นหา</button>
+      </div>
+      <div id="delreq-list" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem"></div>
+    </div>
+    <!-- Admin: pending delete requests -->
+    <div id="adminDeleteReqSection" style="display:none">
+      <div style="padding:.6rem 1rem;background:#f9fafb;border-bottom:1px solid #fee2e2">
+        <p style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ รายการรอการยืนยันจาก Admin</p>
+      </div>
+      <div id="pendingDeleteList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
+    </div>
   </div>
+
+  <!-- Login form for non-admin -->
+  <div id="settingsLoginCard" style="display:none" class="card text-center py-8">
+    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-3xl">🔐</div>
+    <h2 class="font-black text-lg text-gray-800 mb-1">Admin Login</h2>
+    <p class="text-sm text-gray-400 mb-5">สำหรับผู้ดูแลระบบ</p>
+    <div class="space-y-3 text-left max-w-xs mx-auto">
+      <input id="loginUser" type="text" placeholder="Username" autocomplete="username"
+        class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50" style="outline:none"
+        onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      <input id="loginPass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"
+        class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50" style="outline:none"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <p id="loginErr" style="display:none" class="text-red-500 text-sm text-center font-semibold">❌ รหัสผ่านไม่ถูกต้อง</p>
+      <button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-base" style="border:none;cursor:pointer">🔓 เข้าสู่ระบบ</button>
+    </div>
+  </div>
+
   <div id="settingsContent" style="display:none" class="space-y-5">
     <div class="card overflow-hidden" style="padding:0">
       <div class="px-4 py-3.5 border-b border-gray-100 font-bold text-gray-800">📍 จัดการสาขา</div>
@@ -510,6 +516,26 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
   <span id="toastIcon" class="text-xl">✅</span>
   <span id="toastMsg" class="text-sm font-semibold text-gray-700"></span>
 </div>
+<!-- Staff Delete Request Modal -->
+<div id="staffDelModal" onclick="if(event.target===this)closeStaffDeleteDialog()"
+  style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9996;display:none;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:1.5rem;padding:1.5rem;max-width:22rem;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="text-align:center;font-size:2.5rem;margin-bottom:.5rem">🗑</div>
+    <p style="font-size:.9rem;font-weight:700;color:#1f2937;text-align:center;margin-bottom:.2rem">แจ้งขอลบรายการ</p>
+    <p id="staffDelTitle" style="font-size:.78rem;color:#6b7280;text-align:center;margin-bottom:1rem"></p>
+    <p style="font-size:.8rem;color:#374151;margin-bottom:.4rem;font-weight:600">ชื่อผู้แจ้งลบ <span style="color:#dc2626">*</span></p>
+    <input id="staffDelName" type="text" placeholder="ระบุชื่อของคุณ" autocomplete="off"
+      style="width:100%;border:1.5px solid #e5e7eb;border-radius:.85rem;padding:.65rem 1rem;font-size:.9rem;outline:none;margin-bottom:.25rem;box-sizing:border-box"
+      onkeydown="if(event.key==='Enter')submitStaffDeleteReq()"
+      oninput="this.style.borderColor='#e5e7eb'">
+    <p style="font-size:.72rem;color:#9ca3af;margin-bottom:1.2rem">Admin จะต้องยืนยันก่อนจึงจะลบได้จริง</p>
+    <div style="display:flex;gap:.75rem">
+      <button onclick="closeStaffDeleteDialog()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#f3f4f6;color:#374151;font-weight:700;font-size:.9rem;border:none;cursor:pointer">ยกเลิก</button>
+      <button onclick="submitStaffDeleteReq()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#dc2626;color:#fff;font-weight:700;font-size:.9rem;border:none;cursor:pointer">แจ้งลบ</button>
+    </div>
+  </div>
+</div>
+
 <div id="confirmModal" onclick="if(event.target===this)closeConfirm()">
   <div style="background:#fff;border-radius:1.5rem;padding:1.5rem;max-width:20rem;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div id="confirmIcon" class="text-5xl text-center mb-3">⚠️</div>
@@ -651,7 +677,7 @@ setInterval(updateClock,1000); updateClock();
 // ══════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════
-const TITLES={user:'แจ้งสินค้าหมดอายุ',dashboard:'Admin Dashboard',settings:'ตั้งค่าระบบ'};
+const TITLES={user:'แจ้งสินค้าหมดอายุ',dashboard:'รายงานสินค้า',settings:'ตั้งค่าระบบ'};
 function goTo(view){
   localStorage.setItem('lastView',view);
   ['user','dashboard','settings'].forEach(v=>{
@@ -659,40 +685,42 @@ function goTo(view){
     document.getElementById('nb-'+v).classList.toggle('on',v===view);
   });
   document.getElementById('headerTitle').textContent=TITLES[view];
-  if(view==='dashboard'){isAdmin?showDash():showLogin();}
-  if(view==='settings'){
-    if(isAdmin){
-      document.getElementById('settingsGate').style.display='none';
-      document.getElementById('settingsContent').style.display='block';
-      document.getElementById('adminAccountsCard').style.display=isOwner?'block':'none';
-      renderBranches(); renderGroups(); renderBrands();
-      if(isOwner) renderAdminAccounts();
-    } else {
-      document.getElementById('settingsGate').style.display='block';
-      document.getElementById('settingsContent').style.display='none';
-    }
-  }
+  if(view==='dashboard') showDash();
+  if(view==='settings') showSettings();
   if(view==='user') populateFormSelects();
 }
-function showLogin(){
-  document.getElementById('loginSection').style.display='block';
-  document.getElementById('dashSection').style.display='none';
-  document.getElementById('loginErr').style.display='none';
-  document.getElementById('loginPass').value='';
-}
 async function showDash(){
-  document.getElementById('loginSection').style.display='none';
-  document.getElementById('dashSection').style.display='block';
   const dy=document.getElementById('dl-year');
   if(dy.options.length<=1){const ny=nowTH().getFullYear();for(let y=ny-3;y<=ny+4;y++) dy.add(new Option(`${y+543}`,y));}
+  // Show/hide admin-only controls
+  const aCard=document.getElementById('adminActionsCard');
+  if(aCard) aCard.style.display=isAdmin?'block':'none';
   // Render existing cached reports immediately
   if(_reports.length){buildFilters();calcStats();updateStats();renderReports();}
-  // Start realtime listener — updates automatically whenever data changes
+  // Start realtime listener
   startRealtimeReports();
-  // Also do an explicit initial load in case listener is slow (fallback)
+  // Fallback initial load if listener is slow
   if(!_reports.length){
     try{await loadReports();buildFilters();calcStats();updateStats();renderReports();}
     catch(e){toast('โหลดข้อมูลไม่สำเร็จ: '+e.message,'red');}
+  }
+}
+function showSettings(){
+  // Delete request section always visible
+  document.getElementById('delReqSettingsCard').style.display='block';
+  // Render pending delete requests list for admin
+  if(isAdmin) renderPendingDeleteReqs();
+  document.getElementById('adminDeleteReqSection').style.display=isAdmin?'block':'none';
+  // Login form vs admin content
+  if(isAdmin){
+    document.getElementById('settingsLoginCard').style.display='none';
+    document.getElementById('settingsContent').style.display='block';
+    document.getElementById('adminAccountsCard').style.display=isOwner?'block':'none';
+    renderBranches(); renderGroups(); renderBrands();
+    if(isOwner) renderAdminAccounts();
+  } else {
+    document.getElementById('settingsLoginCard').style.display='block';
+    document.getElementById('settingsContent').style.display='none';
   }
 }
 
@@ -718,7 +746,13 @@ async function doLogin(){
     isOwner=!!adm.is_owner; isAdmin=true;
     document.getElementById('adminBadge').style.display='flex';
     document.getElementById('adminBadgeLabel').textContent=isOwner?'Owner':'Admin';
-    showDash();
+    // Show admin controls in dashboard without navigating away
+    const aCard=document.getElementById('adminActionsCard');
+    if(aCard) aCard.style.display='block';
+    updateBell();
+    // Now switch to settings to show admin panel
+    showSettings();
+    toast('เข้าสู่ระบบแล้ว ✅');
   }catch(e){toast('เชื่อมต่อ Firebase ไม่ได้: '+e.message,'red');}
 }
 async function tryRestoreSession(){
@@ -729,15 +763,21 @@ async function tryRestoreSession(){
       isAdmin=true; isOwner=!!snap.val().is_owner;
       document.getElementById('adminBadge').style.display='flex';
       document.getElementById('adminBadgeLabel').textContent=isOwner?'Owner':'Admin';
+      const aCard=document.getElementById('adminActionsCard');
+      if(aCard) aCard.style.display='block';
     }else{_adminSession=null;localStorage.removeItem('adminSession');}
   }catch(e){_adminSession=null;localStorage.removeItem('adminSession');}
 }
 function logout(){
-  stopRealtimeReports();
   isAdmin=false; isOwner=false; _adminSession=null;
   localStorage.removeItem('adminSession');
   document.getElementById('adminBadge').style.display='none';
-  goTo('user'); toast('ออกจากระบบแล้ว');
+  document.getElementById('bellBtn').style.display='none';
+  const aCard=document.getElementById('adminActionsCard');
+  if(aCard) aCard.style.display='none';
+  renderReports(); // re-render to hide admin buttons
+  toast('ออกจากระบบแล้ว');
+  showSettings(); // refresh settings to show login form
 }
 
 // ══════════════════════════════════════════
@@ -1285,6 +1325,18 @@ function updateStats(){
     if(delCount>0){delBanner.style.display='flex';document.getElementById('st-del-req').textContent=delCount;}
     else{delBanner.style.display='none';}
   }
+  updateBell();
+}
+function updateBell(){
+  if(!isAdmin) return;
+  const delCount=_stats.delete_req||0;
+  const unclaimedExp=_stats.unclaimed||0;
+  const total=delCount+unclaimedExp;
+  const btn=document.getElementById('bellBtn');
+  const cnt=document.getElementById('bellCount');
+  if(!btn) return;
+  if(total>0){btn.style.display='flex';cnt.textContent=total>99?'99+':total;}
+  else{btn.style.display='none';}
 }
 
 // ══════════════════════════════════════════
@@ -1478,6 +1530,7 @@ function renderReports(){
         </button>
       </div>
       ${(rep.quantity||rep.note)?`<div style="background:#f9fafb;border-radius:.6rem;padding:.4rem .7rem;display:flex;flex-wrap:wrap;gap:.35rem">${rep.quantity?`<span style="font-size:.78rem;color:#1d4ed8;font-weight:700">📦 ${rep.quantity} ชิ้น</span>`:''}${rep.note?`<span style="font-size:.78rem;color:#6b7280">📝 ${rep.note}</span>`:''}</div>`:''}
+      ${isAdmin?`
       <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f3f4f6;padding-top:.5rem">
         <div>${clB}${rep.claimed_at?`<p style="font-size:.7rem;color:#9ca3af;margin-top:.1rem">เคลม: ${fmtDate(rep.claimed_at)}</p>`:''}</div>
         ${clBtn}
@@ -1496,7 +1549,12 @@ function renderReports(){
           style="font-size:.7rem;padding:.2rem .6rem;border-radius:.5rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer">
           🗑 ลบ
         </button>
-      </div>`;
+      </div>`:`
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f3f4f6;padding-top:.5rem">
+        <div style="display:flex;flex-wrap:wrap;gap:.3rem">${expB}${clB}</div>
+        ${rep.delete_requested?`<span style="font-size:.72rem;font-weight:700;background:#fef9c3;color:#a16207;padding:.15rem .5rem;border-radius:.5rem">⏳ รอลบ</span>`:`<button onclick="openStaffDeleteDialog('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer">🗑 ขอลบ</button>`}
+      </div>`}
+      <p style="font-size:.7rem;color:#d1d5db">ส่งเมื่อ ${fmtDate(rep.submitted_at)}</p>`;
     list.appendChild(card);
     const compEl=document.getElementById(`comp-${rep.id}`);
     if(rep.composite_img){
@@ -1588,7 +1646,7 @@ function confirmDeleteReport(id){
 async function deleteReport(id){
   await db.ref('reports/'+id).remove();
   _reports=_reports.filter(x=>x.id!==id);
-  await loadStats(); updateStats(); renderReports();
+  calcStats(); updateStats(); renderReports(); renderPendingDeleteReqs();
   toast('ลบรายการแล้ว');
 }
 function confirmAdminDelete(id){
@@ -1600,7 +1658,7 @@ async function rejectDeleteReq(id){
   await db.ref('reports/'+id).update({delete_requested:null,delete_requester:null});
   const rep=_reports.find(r=>r.id===id);
   if(rep){rep.delete_requested=null;rep.delete_requester=null;}
-  calcStats(); updateStats(); renderReports();
+  calcStats(); updateStats(); renderReports(); renderPendingDeleteReqs();
   toast('ปฏิเสธคำขอลบแล้ว');
 }
 function openLB(src){document.getElementById('lbImg').src=src;document.getElementById('lb').style.display='flex';}
@@ -1608,12 +1666,27 @@ function openLB(src){document.getElementById('lbImg').src=src;document.getElemen
 // ══════════════════════════════════════════
 // STAFF DELETE REQUEST
 // ══════════════════════════════════════════
-function toggleDelReqPanel(){
-  const body=document.getElementById('delreq-body');
-  const arrow=document.getElementById('delreq-arrow');
-  const isOpen=body.style.display!=='none';
-  body.style.display=isOpen?'none':'block';
-  arrow.style.transform=isOpen?'':'rotate(180deg)';
+// Staff delete dialog (modal)
+let _pendingDeleteId=null;
+function openStaffDeleteDialog(id){
+  _pendingDeleteId=id;
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  document.getElementById('staffDelTitle').textContent=`${rep.branch_name} · ${rep.brand_name}`;
+  document.getElementById('staffDelName').value='';
+  document.getElementById('staffDelModal').style.display='flex';
+  setTimeout(()=>document.getElementById('staffDelName').focus(),100);
+}
+function closeStaffDeleteDialog(){document.getElementById('staffDelModal').style.display='none';_pendingDeleteId=null;}
+async function submitStaffDeleteReq(){
+  const name=document.getElementById('staffDelName').value.trim();
+  if(!name){document.getElementById('staffDelName').style.borderColor='#dc2626';return;}
+  if(!_pendingDeleteId) return;
+  await db.ref('reports/'+_pendingDeleteId).update({delete_requested:1,delete_requester:name});
+  const rep=_reports.find(r=>r.id===_pendingDeleteId);
+  if(rep){rep.delete_requested=1;rep.delete_requester=name;}
+  closeStaffDeleteDialog();
+  calcStats(); updateStats(); renderReports();
+  toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน 🔔');
 }
 async function searchMyReports(){
   const name=document.getElementById('delreq-name').value.trim();
@@ -1640,8 +1713,23 @@ async function searchMyReports(){
 }
 async function requestDeleteReport(id,requesterName){
   await db.ref('reports/'+id).update({delete_requested:1,delete_requester:requesterName});
-  toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน');
+  toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน 🔔');
   await searchMyReports();
+}
+function renderPendingDeleteReqs(){
+  const pending=_reports.filter(r=>r.delete_requested);
+  const el=document.getElementById('pendingDeleteList');
+  if(!el) return;
+  if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอลบ</p>';return;}
+  el.innerHTML='';
+  pending.forEach(rep=>{
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1.5px solid #fca5a5;border-radius:.75rem;padding:.65rem .85rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem';
+    div.innerHTML=`<div style="min-width:0;flex:1"><p style="font-size:.82rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p><p style="font-size:.72rem;color:#6b7280">${rep.brand_name||''} · ${expLabel}</p>${rep.delete_requester?`<p style="font-size:.7rem;color:#dc2626;font-weight:600">👤 ${rep.delete_requester}</p>`:''}</div><div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0"><button onclick="confirmAdminDelete('${rep.id}')" style="font-size:.72rem;padding:.25rem .6rem;border-radius:.6rem;background:#dc2626;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยันลบ</button><button onclick="rejectDeleteReq('${rep.id}')" style="font-size:.72rem;padding:.25rem .6rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button></div>`;
+    el.appendChild(div);
+  });
 }
 
 // ══════════════════════════════════════════
@@ -1886,7 +1974,12 @@ async function init(){
   await seedIfEmpty();
   await Promise.all([loadAll(), tryRestoreSession()]);
   populateFormSelects();
-  // restore last viewed page (dashboard/settings stay if already logged in)
+  // Start realtime listener for all users (dashboard accessible to all)
+  startRealtimeReports();
+  // Show settings delete request section always
+  document.getElementById('delReqSettingsCard').style.display='block';
+  if(isAdmin) updateBell();
+  // restore last viewed page
   const lastView=localStorage.getItem('lastView')||'user';
   if(lastView!=='user') goTo(lastView);
 }
