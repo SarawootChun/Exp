@@ -424,6 +424,20 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <div id="expiredSettingsList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
   </div>
 
+  <!-- SOLD-OUT LIST — admin only, placed after expired -->
+  <div id="soldOutSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
+    <button onclick="toggleSoldOutSettings()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span>📦</span>
+        <span style="font-weight:700;color:#1d4ed8;font-size:.9rem">รายการขายหมดแล้ว</span>
+        <span id="soldOutSettingsCount" style="font-size:.7rem;color:#fff;background:#1d4ed8;padding:.1rem .5rem;border-radius:99px;font-weight:700;display:none"></span>
+        <span style="font-size:.68rem;color:#60a5fa;background:#eff6ff;padding:.1rem .45rem;border-radius:99px;font-weight:600;border:1px solid #bfdbfe">คลิกเพื่อพับ/ขยาย</span>
+      </div>
+      <span id="soldOutSettings-arrow" style="font-size:1rem;color:#93c5fd;transition:transform .25s">▲</span>
+    </button>
+    <div id="soldOutSettingsList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
+  </div>
+
   <!-- QTY + SOLD-OUT + DELETE REQUEST SECTION — admin only -->
   <div id="pendingReqSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
     <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);padding:.85rem 1rem;font-weight:700;color:#15803d;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
@@ -693,7 +707,7 @@ function startRealtimeReports(){
     _reports=arr.slice(0,500);
     calcStats(); updateStats(); buildFilters(); renderReports();
     const settingsVisible=document.getElementById('v-settings')&&document.getElementById('v-settings').style.display!=='none';
-    if(settingsVisible&&isAdmin){renderPendingSoldOutReqs();renderPendingDeleteReqs();renderPendingQtyReqs();renderExpiredInSettings();}
+    if(settingsVisible&&isAdmin){renderPendingSoldOutReqs();renderPendingDeleteReqs();renderPendingQtyReqs();renderExpiredInSettings();renderSoldOutInSettings();}
   });
 }
 function stopRealtimeReports(){
@@ -792,8 +806,9 @@ function showSettings(){
   document.getElementById('delReqSettingsCard').style.display='block';
   // Admin-only sections
   document.getElementById('expiredSettingsCard').style.display=isAdmin?'block':'none';
+  document.getElementById('soldOutSettingsCard').style.display=isAdmin?'block':'none';
   document.getElementById('pendingReqSettingsCard').style.display=isAdmin?'block':'none';
-  if(isAdmin){renderExpiredInSettings();renderPendingQtyReqs();renderPendingDeleteReqs();renderPendingSoldOutReqs();}
+  if(isAdmin){renderExpiredInSettings();renderSoldOutInSettings();renderPendingQtyReqs();renderPendingDeleteReqs();renderPendingSoldOutReqs();}
   document.getElementById('adminSoldOutReqSection').style.display=isAdmin?'block':'none';
   document.getElementById('adminDeleteReqSection').style.display=isAdmin?'block':'none';
   // Login form vs admin content
@@ -1754,7 +1769,7 @@ async function toggleSoldOut(id){
   await db.ref('reports/'+id).update(upd);
   rep.sold_out=newVal;
   if(newVal===1){rep.sold_out_requested=null;rep.sold_out_requester=null;}
-  calcStats(); updateStats(); renderReports(); renderPendingSoldOutReqs(); renderExpiredInSettings();
+  calcStats(); updateStats(); renderReports(); renderPendingSoldOutReqs(); renderExpiredInSettings(); renderSoldOutInSettings();
 }
 function confirmDeleteReport(id){
   const rep=_reports.find(r=>r.id===id); if(!rep) return;
@@ -1763,7 +1778,7 @@ function confirmDeleteReport(id){
 async function deleteReport(id){
   await db.ref('reports/'+id).remove();
   _reports=_reports.filter(x=>x.id!==id);
-  calcStats(); updateStats(); renderReports(); renderPendingDeleteReqs(); renderPendingSoldOutReqs(); renderPendingQtyReqs(); renderExpiredInSettings();
+  calcStats(); updateStats(); renderReports(); renderPendingDeleteReqs(); renderPendingSoldOutReqs(); renderPendingQtyReqs(); renderExpiredInSettings(); renderSoldOutInSettings();
   toast('ลบรายการแล้ว');
 }
 function confirmAdminDelete(id){
@@ -2000,18 +2015,18 @@ async function submitAdminSoldOutConfirm(){
   const rep=_reports.find(r=>r.id===id); if(!rep) return;
   await db.ref('reports/'+id).update({sold_out:1,sold_out_requested:null,sold_out_requester:name});
   rep.sold_out=1;rep.sold_out_requested=null;rep.sold_out_requester=name;
-  calcStats();updateStats();renderReports();renderPendingSoldOutReqs();renderExpiredInSettings();
+  calcStats();updateStats();renderReports();renderPendingSoldOutReqs();renderExpiredInSettings();renderSoldOutInSettings();
   toast('บันทึกขายหมดแล้ว 📦');
   // Navigate to Settings to show the result
   goTo('settings');
   setTimeout(()=>{
-    const expCard=document.getElementById('expiredSettingsCard');
-    if(expCard&&expCard.style.display!=='none'){
+    const soldCard=document.getElementById('soldOutSettingsCard');
+    if(soldCard&&soldCard.style.display!=='none'){
       // Expand if collapsed
-      const body=document.getElementById('expiredSettingsList');
-      const arrow=document.getElementById('expiredSettings-arrow');
+      const body=document.getElementById('soldOutSettingsList');
+      const arrow=document.getElementById('soldOutSettings-arrow');
       if(body&&body.style.display==='none'){body.style.display='flex';if(arrow)arrow.style.transform='rotate(0deg)';}
-      expCard.scrollIntoView({behavior:'smooth'});
+      soldCard.scrollIntoView({behavior:'smooth'});
     }
   },200);
 }
@@ -2382,6 +2397,68 @@ function initExpiredSettings(){
 }
 
 // ══════════════════════════════════════════
+// SOLD-OUT SETTINGS TOGGLE + RENDER
+// ══════════════════════════════════════════
+function toggleSoldOutSettings(){
+  const body=document.getElementById('soldOutSettingsList');
+  const arrow=document.getElementById('soldOutSettings-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'flex';
+  arrow.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+  localStorage.setItem('soldOutSettingsOpen',isOpen?'0':'1');
+}
+function initSoldOutSettings(){
+  const saved=localStorage.getItem('soldOutSettingsOpen');
+  if(saved==='0'){
+    const body=document.getElementById('soldOutSettingsList');
+    const arrow=document.getElementById('soldOutSettings-arrow');
+    if(body) body.style.display='none';
+    if(arrow) arrow.style.transform='rotate(180deg)';
+  }
+}
+function renderSoldOutInSettings(){
+  const soldOut=_reports.filter(r=>r.sold_out);
+  const el=document.getElementById('soldOutSettingsList');
+  if(!el) return;
+  const cntEl=document.getElementById('soldOutSettingsCount');
+  if(cntEl){if(soldOut.length){cntEl.textContent=soldOut.length;cntEl.style.display='inline';}else{cntEl.style.display='none';}}
+  if(!soldOut.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีรายการขายหมด</p>';return;}
+  el.innerHTML='';
+  soldOut.forEach(rep=>{
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+    const thumbSrc=rep.composite_img||rep.image_front||rep.image_overview||rep.image_expiry||'';
+    const thumbHtml=thumbSrc
+      ?`<div style="position:relative;width:56px;height:56px;flex-shrink:0;cursor:pointer" onclick="openLB('${thumbSrc}')"><img src="${thumbSrc}" style="width:56px;height:56px;object-fit:cover;border-radius:.6rem;border:1.5px solid #93c5fd;display:block" crossorigin="anonymous"><div style="position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border-radius:.3rem;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:.6rem;pointer-events:none">🔍</div></div>`
+      :`<div style="width:56px;height:56px;border-radius:.6rem;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;border:1.5px solid #93c5fd">📦</div>`;
+    const expiredBadge=isExpiredFn(rep.expiry_month,rep.expiry_year,rep.expiry_day||null)?'<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:.1rem .4rem;border-radius:.4rem">⏰ หมดอายุ</span>':'';
+    const claimBadge=rep.claim_status?'<span style="font-size:.65rem;font-weight:700;background:#dcfce7;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">✅ เคลมแล้ว</span>':'';
+    const sentBadge=rep.sent_claim?'<span style="font-size:.65rem;font-weight:700;background:#ede9fe;color:#7c3aed;padding:.1rem .4rem;border-radius:.4rem">📨 ส่งเคลมแล้ว</span>':'';
+    const qtyBadge=rep.remaining_quantity!=null?`<span style="font-size:.65rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">📊 ${rep.remaining_quantity} ชิ้น</span>`:'';
+    const confirmerBadge=rep.sold_out_requester?`<span style="font-size:.65rem;font-weight:600;background:#eff6ff;color:#1d4ed8;padding:.1rem .4rem;border-radius:.4rem">👤 ${rep.sold_out_requester}</span>`:'';
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1px solid #93c5fd;border-radius:.85rem;padding:.7rem .8rem;display:flex;flex-direction:column;gap:.5rem';
+    div.innerHTML=`
+      <div style="display:flex;gap:.55rem;align-items:flex-start">
+        ${thumbHtml}
+        <div style="min-width:0;flex:1">
+          <p style="font-size:.84rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p>
+          <p style="font-size:.73rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.brand_name||''}</p>
+          <p style="font-size:.68rem;color:#1d4ed8;font-weight:600;margin-top:.15rem">📦 ขายหมดแล้ว</p>
+          ${rep.reporter_name?`<p style="font-size:.68rem;color:#9ca3af;margin-top:.1rem">📝 ${rep.reporter_name}</p>`:''}
+          <p style="font-size:.68rem;color:#9ca3af;margin-top:.05rem">⏰ หมดอายุ: ${expLabel}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.3rem">${confirmerBadge}${expiredBadge}${claimBadge}${sentBadge}${qtyBadge}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.35rem;justify-content:flex-end;border-top:1px solid #eff6ff;padding-top:.45rem;flex-wrap:wrap">
+        <button onclick="toggleSoldOut('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#f3f4f6;color:#1d4ed8;font-weight:700;border:1px solid #bfdbfe;cursor:pointer">↩ มีสินค้า</button>
+        <button onclick="confirmDeleteReport('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer">🗑 ลบ</button>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════
 // HOW TO USE TOGGLE
 // ══════════════════════════════════════════
 function toggleHowTo(){
@@ -2407,6 +2484,7 @@ function initHowTo(){
 async function init(){
   initHowTo();
   initExpiredSettings();
+  initSoldOutSettings();
   await seedIfEmpty();
   await Promise.all([loadAll(), tryRestoreSession()]);
   populateFormSelects();
