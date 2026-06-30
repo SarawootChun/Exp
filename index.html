@@ -311,7 +311,7 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
         style="padding:.6rem .3rem;border-radius:.85rem;border:1.5px solid #fde68a;background:#fefce8;cursor:pointer;text-align:center;transition:box-shadow .15s">
         <p style="font-size:.75rem;font-weight:700;color:#a16207">🟡 ใกล้หมด</p>
         <p id="st-urg-y" style="font-size:1.6rem;font-weight:900;color:#a16207;line-height:1.1">0</p>
-        <p style="font-size:.65rem;color:#fbbf24">≤35 วัน</p>
+        <p style="font-size:.65rem;color:#fbbf24">16–35 วัน</p>
       </button>
       <button onclick="setUrgencyFilter('red')" id="urg-r-btn"
         style="padding:.6rem .3rem;border-radius:.85rem;border:1.5px solid #fca5a5;background:#fff1f2;cursor:pointer;text-align:center;transition:box-shadow .15s">
@@ -410,15 +410,38 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
 <!-- VIEW 3 : SETTINGS -->
 <div id="v-settings" class="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-5" style="display:none">
 
+  <!-- EXPIRED ITEMS — admin only -->
+  <div id="expiredSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
+    <div style="background:linear-gradient(135deg,#fef2f2,#fee2e2);padding:.85rem 1rem;font-weight:700;color:#9f1239;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
+      <span>⏰</span> สินค้าหมดอายุแล้ว
+    </div>
+    <div id="expiredSettingsList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
+  </div>
+
+  <!-- QTY + SOLD-OUT + DELETE REQUEST SECTION — admin only -->
+  <div id="pendingReqSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
+    <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);padding:.85rem 1rem;font-weight:700;color:#15803d;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
+      <span>📊</span> รายการรอยืนยันจำนวนคงเหลือ
+    </div>
+    <div id="pendingQtyList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
+  </div>
+
   <!-- DELETE REQUEST SECTION — always visible -->
   <div id="delReqSettingsCard" class="card overflow-hidden" style="padding:0;display:none">
     <div style="background:linear-gradient(135deg,#fff1f2,#fee2e2);padding:.85rem 1rem;font-weight:700;color:#dc2626;font-size:.9rem;display:flex;align-items:center;gap:.5rem">
       <span>🗑</span> แจ้งลบ / คำขอลบรายการ
     </div>
+    <!-- Admin: pending sold-out requests -->
+    <div id="adminSoldOutReqSection" style="display:none">
+      <div style="padding:.6rem 1rem;background:#eff6ff;border-bottom:1px solid #bfdbfe">
+        <p style="font-size:.78rem;font-weight:700;color:#1d4ed8">📦 รายการรอยืนยันขายหมด</p>
+      </div>
+      <div id="pendingSoldOutList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
+    </div>
     <!-- Admin: pending delete requests -->
     <div id="adminDeleteReqSection" style="display:none">
       <div style="padding:.6rem 1rem;background:#f9fafb;border-bottom:1px solid #fee2e2">
-        <p style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ รายการรอการยืนยันจาก Admin</p>
+        <p style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ รายการรอการยืนยันลบ</p>
       </div>
       <div id="pendingDeleteList" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem"></div>
     </div>
@@ -504,6 +527,48 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
 <div id="toast" class="bg-white rounded-2xl shadow-xl px-5 py-3.5 flex items-center gap-3" style="border:1.5px solid #e5e7eb">
   <span id="toastIcon" class="text-xl">✅</span>
   <span id="toastMsg" class="text-sm font-semibold text-gray-700"></span>
+</div>
+<!-- Staff Sold-Out Request Modal -->
+<div id="staffSoldModal" onclick="if(event.target===this)closeStaffSoldOutDialog()"
+  style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9996;display:none;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:1.5rem;padding:1.5rem;max-width:22rem;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="text-align:center;font-size:2.5rem;margin-bottom:.5rem">📦</div>
+    <p style="font-size:.9rem;font-weight:700;color:#1f2937;text-align:center;margin-bottom:.2rem">แจ้งขายหมดแล้ว</p>
+    <p id="staffSoldTitle" style="font-size:.78rem;color:#6b7280;text-align:center;margin-bottom:1rem"></p>
+    <p style="font-size:.8rem;color:#374151;margin-bottom:.4rem;font-weight:600">ชื่อผู้แจ้ง <span style="color:#dc2626">*</span></p>
+    <input id="staffSoldName" type="text" placeholder="ระบุชื่อของคุณ" autocomplete="off"
+      style="width:100%;border:1.5px solid #e5e7eb;border-radius:.85rem;padding:.65rem 1rem;font-size:.9rem;outline:none;margin-bottom:.25rem;box-sizing:border-box"
+      onkeydown="if(event.key==='Enter')submitStaffSoldOutReq()"
+      oninput="this.style.borderColor='#e5e7eb'">
+    <p style="font-size:.72rem;color:#9ca3af;margin-bottom:1.2rem">Admin จะต้องยืนยันก่อนจึงจะเปลี่ยนสถานะได้จริง</p>
+    <div style="display:flex;gap:.75rem">
+      <button onclick="closeStaffSoldOutDialog()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#f3f4f6;color:#374151;font-weight:700;font-size:.9rem;border:none;cursor:pointer">ยกเลิก</button>
+      <button onclick="submitStaffSoldOutReq()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#1d4ed8;color:#fff;font-weight:700;font-size:.9rem;border:none;cursor:pointer">📦 แจ้ง</button>
+    </div>
+  </div>
+</div>
+<!-- Staff Quantity Request Modal -->
+<div id="staffQtyModal" onclick="if(event.target===this)closeStaffQtyDialog()"
+  style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9996;display:none;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:1.5rem;padding:1.5rem;max-width:22rem;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="text-align:center;font-size:2.5rem;margin-bottom:.5rem">📊</div>
+    <p style="font-size:.9rem;font-weight:700;color:#1f2937;text-align:center;margin-bottom:.2rem">แจ้งจำนวนคงเหลือ</p>
+    <p id="staffQtyTitle" style="font-size:.78rem;color:#6b7280;text-align:center;margin-bottom:1rem"></p>
+    <p style="font-size:.8rem;color:#374151;margin-bottom:.4rem;font-weight:600">จำนวนคงเหลือ (ชิ้น) <span style="color:#dc2626">*</span></p>
+    <input id="staffQtyValue" type="number" min="0" placeholder="ระบุจำนวน" autocomplete="off"
+      style="width:100%;border:1.5px solid #e5e7eb;border-radius:.85rem;padding:.65rem 1rem;font-size:.9rem;outline:none;margin-bottom:.75rem;box-sizing:border-box"
+      oninput="this.style.borderColor='#e5e7eb'">
+    <p style="font-size:.8rem;color:#374151;margin-bottom:.4rem;font-weight:600">ชื่อผู้แจ้ง <span style="color:#dc2626">*</span></p>
+    <input id="staffQtyName" type="text" placeholder="ระบุชื่อของคุณ" autocomplete="off"
+      style="width:100%;border:1.5px solid #e5e7eb;border-radius:.85rem;padding:.65rem 1rem;font-size:.9rem;outline:none;margin-bottom:.25rem;box-sizing:border-box"
+      onkeydown="if(event.key==='Enter')submitStaffQtyReq()"
+      oninput="this.style.borderColor='#e5e7eb'">
+    <p style="font-size:.72rem;color:#9ca3af;margin-bottom:1.2rem">Admin จะต้องยืนยันก่อนจึงจะบันทึกได้จริง</p>
+    <div style="display:flex;gap:.75rem">
+      <button onclick="closeStaffQtyDialog()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#f3f4f6;color:#374151;font-weight:700;font-size:.9rem;border:none;cursor:pointer">ยกเลิก</button>
+      <button onclick="submitStaffQtyReq()" style="flex:1;padding:.75rem;border-radius:.85rem;background:#16a34a;color:#fff;font-weight:700;font-size:.9rem;border:none;cursor:pointer">📊 แจ้ง</button>
+    </div>
+  </div>
 </div>
 <!-- Staff Delete Request Modal -->
 <div id="staffDelModal" onclick="if(event.target===this)closeStaffDeleteDialog()"
@@ -617,9 +682,11 @@ function calcStats(){
     unclaimed:_reports.filter(r=>!r.claim_status&&isExpiredFn(r.expiry_month,r.expiry_year,r.expiry_day||null)).length,
     sent_claim:_reports.filter(r=>r.sent_claim).length,
     urg_green:notExpired.filter(r=>daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1)>35).length,
-    urg_yellow:notExpired.filter(r=>{const d=daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1);return d>=0&&d<=35;}).length,
+    urg_yellow:notExpired.filter(r=>{const d=daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1);return d>15&&d<=35;}).length,
     urg_red:notExpired.filter(r=>{const d=daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1);return d>=0&&d<=15;}).length,
     delete_req:_reports.filter(r=>r.delete_requested).length,
+    sold_out_req:_reports.filter(r=>r.sold_out_requested&&!r.sold_out).length,
+    qty_req:_reports.filter(r=>r.qty_req_value!=null&&r.remaining_quantity==null).length,
   };
 }
 async function loadStats(){calcStats();}
@@ -697,8 +764,11 @@ async function showDash(){
 function showSettings(){
   // Delete request section always visible
   document.getElementById('delReqSettingsCard').style.display='block';
-  // Render pending delete requests list for admin
-  if(isAdmin) renderPendingDeleteReqs();
+  // Admin-only sections
+  document.getElementById('expiredSettingsCard').style.display=isAdmin?'block':'none';
+  document.getElementById('pendingReqSettingsCard').style.display=isAdmin?'block':'none';
+  if(isAdmin){renderExpiredInSettings();renderPendingQtyReqs();renderPendingDeleteReqs();renderPendingSoldOutReqs();}
+  document.getElementById('adminSoldOutReqSection').style.display=isAdmin?'block':'none';
   document.getElementById('adminDeleteReqSection').style.display=isAdmin?'block':'none';
   // Login form vs admin content
   if(isAdmin){
@@ -1320,7 +1390,9 @@ function updateBell(){
   if(!isAdmin) return;
   const delCount=_stats.delete_req||0;
   const unclaimedExp=_stats.unclaimed||0;
-  const total=delCount+unclaimedExp;
+  const soldOutReq=_stats.sold_out_req||0;
+  const qtyReq=_stats.qty_req||0;
+  const total=delCount+unclaimedExp+soldOutReq+qtyReq;
   const btn=document.getElementById('bellBtn');
   const cnt=document.getElementById('bellCount');
   if(!btn) return;
@@ -1454,8 +1526,8 @@ function renderReports(){
   if(chipClaim==='0')     r=r.filter(x=>!x.claim_status);
   if(chipClaim==='1')     r=r.filter(x=>x.claim_status);
   if(chipClaim==='sent')  r=r.filter(x=>x.sent_claim);
-  if(chipExp==='1')       r=r.filter(x=>isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
-  if(chipExp==='0')       r=r.filter(x=>!isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
+  // Expired items are always hidden from main list (managed in Admin Settings)
+  r=r.filter(x=>!isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
   if(chipClaim==='sold')  r=r.filter(x=>x.sold_out);
   if(chipUrgency)         r=r.filter(x=>getUrgency(x)===chipUrgency);
   if(chipDeleteReq)       r=r.filter(x=>x.delete_requested);
@@ -1477,7 +1549,11 @@ function renderReports(){
       :urg==='yellow'?`<span style="font-size:.7rem;font-weight:700;background:#fefce8;color:#854d0e;padding:.15rem .5rem;border-radius:.5rem">🟡 เหลือ ${days} วัน</span>`
       :`<span style="font-size:.7rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.15rem .5rem;border-radius:.5rem">🟢 เหลือ ${days} วัน</span>`;
     const soldBadge=rep.sold_out?'<span style="font-size:.72rem;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:.15rem .5rem;border-radius:.5rem">📦 ขายหมดแล้ว</span>':'';
+    const qtyBadge=rep.remaining_quantity!=null?`<span style="font-size:.72rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.15rem .5rem;border-radius:.5rem">📊 คงเหลือ ${rep.remaining_quantity} ชิ้น</span>`:'';
+    const qtyReqHtml=(rep.qty_req_value!=null&&rep.remaining_quantity==null)?`<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:.7rem;padding:.45rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem"><div><span style="font-size:.78rem;font-weight:700;color:#15803d">📊 แจ้งจำนวนคงเหลือ ${rep.qty_req_value} ชิ้น</span>${rep.qty_req_requester?`<span style="font-size:.72rem;color:#9ca3af"> — ${rep.qty_req_requester}</span>`:''}</div><div style="display:flex;gap:.35rem"><button onclick="confirmAdminQty('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#16a34a;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยัน</button><button onclick="rejectQtyReq('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button></div></div>`:'';
+
     const delReqHtml=rep.delete_requested?`<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:.7rem;padding:.45rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem"><div><span style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ ขอลบ</span>${rep.delete_requester?`<span style="font-size:.72rem;color:#9ca3af"> — ${rep.delete_requester}</span>`:''}</div><div style="display:flex;gap:.35rem"><button onclick="confirmAdminDelete('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#dc2626;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยันลบ</button><button onclick="rejectDeleteReq('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button></div></div>`:'';
+    const soldReqHtml=(rep.sold_out_requested&&!rep.sold_out)?`<div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:.7rem;padding:.45rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem"><div><span style="font-size:.78rem;font-weight:700;color:#1d4ed8">📦 ขอยืนยันขายหมด</span>${rep.sold_out_requester?`<span style="font-size:.72rem;color:#9ca3af"> — ${rep.sold_out_requester}</span>`:''}</div><div style="display:flex;gap:.35rem"><button onclick="confirmAdminSoldOut('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#1d4ed8;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยัน</button><button onclick="rejectSoldOutReq('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button></div></div>`:'';
     const soldBtn=rep.sold_out
       ?`<button onclick="toggleSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">↩ ยังมีสินค้า</button>`
       :`<button onclick="toggleSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#1d4ed8;color:#fff;font-weight:700;border:none;cursor:pointer">📦 ขายหมดแล้ว</button>`;
@@ -1492,7 +1568,8 @@ function renderReports(){
     const reporterHtml=rep.reporter_name?`<span style="font-size:.72rem;color:#6b7280">👤 ${rep.reporter_name}</span>`:'';
     const card=document.createElement('div');
     card.className='card';
-    card.style.cssText='display:flex;flex-direction:column;gap:.65rem'+(rep.delete_requested?';border:1.5px solid #fca5a5':'');
+    const _borderClr=rep.delete_requested?'#fca5a5':(rep.sold_out_requested&&!rep.sold_out)?'#93c5fd':(rep.qty_req_value!=null&&rep.remaining_quantity==null)?'#86efac':'';
+    card.style.cssText='display:flex;flex-direction:column;gap:.65rem'+(_borderClr?`;border:1.5px solid ${_borderClr}`:'');
     card.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div style="min-width:0;flex:1">
@@ -1505,6 +1582,7 @@ function renderReports(){
           <span style="font-size:.72rem;color:#9ca3af">${expLabel}</span>
           ${urgBadge}
           ${soldBadge}
+          ${qtyBadge}
         </div>
       </div>
       <div id="comp-${rep.id}" style="width:100%;background:#1e293b;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem;min-height:72px">⏳ กำลังโหลดรูป...</div>
@@ -1531,6 +1609,8 @@ function renderReports(){
       <div style="display:flex;justify-content:flex-end">
         ${soldBtn}
       </div>
+      ${qtyReqHtml}
+      ${soldReqHtml}
       ${delReqHtml}
       <div style="display:flex;align-items:center;justify-content:space-between">
         <p style="font-size:.7rem;color:#d1d5db">ส่งเมื่อ ${fmtDate(rep.submitted_at)}</p>
@@ -1539,9 +1619,23 @@ function renderReports(){
           🗑 ลบ
         </button>
       </div>`:`
-      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f3f4f6;padding-top:.5rem">
+      <div style="border-top:1px solid #f3f4f6;padding-top:.5rem;display:flex;flex-direction:column;gap:.4rem">
         <div style="display:flex;flex-wrap:wrap;gap:.3rem">${expB}${clB}</div>
-        ${rep.delete_requested?`<span style="font-size:.72rem;font-weight:700;background:#fef9c3;color:#a16207;padding:.15rem .5rem;border-radius:.5rem">⏳ รอลบ</span>`:`<button onclick="openStaffDeleteDialog('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer">🗑 ขอลบ</button>`}
+        <div style="display:flex;gap:.4rem;justify-content:flex-end;flex-wrap:wrap">
+          ${rep.remaining_quantity!=null
+            ?`<span style="font-size:.72rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.2rem .6rem;border-radius:.5rem;display:inline-flex;align-items:center">📊 ${rep.remaining_quantity} ชิ้น</span>`
+            :(rep.qty_req_value!=null
+              ?`<span style="font-size:.72rem;font-weight:700;background:#dcfce7;color:#15803d;padding:.2rem .6rem;border-radius:.5rem;display:inline-flex;align-items:center">⏳ รอยืนยัน</span>`
+              :`<button onclick="openStaffQtyDialog('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#f0fdf4;color:#15803d;font-weight:700;border:1px solid #86efac;cursor:pointer">📊 จำนวนคงเหลือ</button>`)}
+          ${rep.sold_out
+            ?`<span style="font-size:.72rem;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:.2rem .6rem;border-radius:.5rem;display:inline-flex;align-items:center">📦 ขายหมดแล้ว</span>`
+            :(rep.sold_out_requested
+              ?`<span style="font-size:.72rem;font-weight:700;background:#fef3c7;color:#d97706;padding:.2rem .6rem;border-radius:.5rem;display:inline-flex;align-items:center">⏳ รอยืนยัน</span>`
+              :`<button onclick="openStaffSoldOutDialog('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#eff6ff;color:#1d4ed8;font-weight:700;border:1px solid #bfdbfe;cursor:pointer">📦 ขายหมดแล้ว</button>`)}
+          ${rep.delete_requested
+            ?`<span style="font-size:.72rem;font-weight:700;background:#fef9c3;color:#a16207;padding:.2rem .6rem;border-radius:.5rem;display:inline-flex;align-items:center">⏳ รอลบ</span>`
+            :`<button onclick="openStaffDeleteDialog('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer">🗑 ขอลบ</button>`}
+        </div>
       </div>`}
       <p style="font-size:.7rem;color:#d1d5db">ส่งเมื่อ ${fmtDate(rep.submitted_at)}</p>`;
     list.appendChild(card);
@@ -1635,7 +1729,7 @@ function confirmDeleteReport(id){
 async function deleteReport(id){
   await db.ref('reports/'+id).remove();
   _reports=_reports.filter(x=>x.id!==id);
-  calcStats(); updateStats(); renderReports(); renderPendingDeleteReqs();
+  calcStats(); updateStats(); renderReports(); renderPendingDeleteReqs(); renderPendingSoldOutReqs(); renderPendingQtyReqs(); renderExpiredInSettings();
   toast('ลบรายการแล้ว');
 }
 function confirmAdminDelete(id){
@@ -1678,6 +1772,242 @@ async function submitStaffDeleteReq(){
   toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน 🔔');
 }
 
+// ══════════════════════════════════════════
+// STAFF QUANTITY REQUEST
+// ══════════════════════════════════════════
+let _pendingQtyId=null;
+function openStaffQtyDialog(id){
+  _pendingQtyId=id;
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  document.getElementById('staffQtyTitle').textContent=`${rep.branch_name} · ${rep.brand_name}`;
+  document.getElementById('staffQtyValue').value='';
+  document.getElementById('staffQtyName').value='';
+  document.getElementById('staffQtyModal').style.display='flex';
+  setTimeout(()=>document.getElementById('staffQtyValue').focus(),100);
+}
+function closeStaffQtyDialog(){document.getElementById('staffQtyModal').style.display='none';_pendingQtyId=null;}
+async function submitStaffQtyReq(){
+  const val=document.getElementById('staffQtyValue').value.trim();
+  const name=document.getElementById('staffQtyName').value.trim();
+  if(val===''||isNaN(Number(val))){document.getElementById('staffQtyValue').style.borderColor='#dc2626';return;}
+  if(!name){document.getElementById('staffQtyName').style.borderColor='#dc2626';return;}
+  if(!_pendingQtyId) return;
+  await db.ref('reports/'+_pendingQtyId).update({qty_req_value:Number(val),qty_req_requester:name});
+  const rep=_reports.find(r=>r.id===_pendingQtyId);
+  if(rep){rep.qty_req_value=Number(val);rep.qty_req_requester=name;}
+  closeStaffQtyDialog();
+  calcStats(); updateStats(); renderReports();
+  toast('แจ้งจำนวนคงเหลือแล้ว — รอ Admin ยืนยัน 🔔');
+}
+function confirmAdminQty(id){
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  const qty=rep.qty_req_value;
+  const who=rep.qty_req_requester||'พนักงาน';
+  showConfirm('ยืนยันจำนวนคงเหลือ?',`${rep.branch_name} · ${rep.brand_name}\nจำนวน: ${qty} ชิ้น\nแจ้งโดย: ${who}`,async()=>{
+    await db.ref('reports/'+id).update({remaining_quantity:qty,qty_req_value:null,qty_req_requester:null});
+    const r=_reports.find(x=>x.id===id);
+    if(r){r.remaining_quantity=qty;r.qty_req_value=null;r.qty_req_requester=null;}
+    calcStats(); updateStats(); renderReports(); renderPendingQtyReqs();
+    toast('บันทึกจำนวนคงเหลือแล้ว 📊');
+  },'📊','#16a34a');
+}
+async function rejectQtyReq(id){
+  await db.ref('reports/'+id).update({qty_req_value:null,qty_req_requester:null});
+  const rep=_reports.find(r=>r.id===id);
+  if(rep){rep.qty_req_value=null;rep.qty_req_requester=null;}
+  calcStats(); updateStats(); renderReports(); renderPendingQtyReqs();
+  toast('ปฏิเสธคำขอจำนวนคงเหลือแล้ว');
+}
+function renderPendingQtyReqs(){
+  const pending=_reports.filter(r=>r.qty_req_value!=null&&r.remaining_quantity==null);
+  const el=document.getElementById('pendingQtyList');
+  if(!el) return;
+  if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอ</p>';return;}
+  el.innerHTML='';
+  pending.forEach(rep=>{
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+    const urg=getUrgency(rep);
+    const days=daysUntilExpiry(rep.expiry_month,rep.expiry_year,rep.expiry_day||1);
+    const urgChip=urg==='expired'
+      ?'<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.1rem .4rem;border-radius:.4rem">หมดอายุแล้ว</span>'
+      :urg==='red'?`<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.1rem .4rem;border-radius:.4rem">🔴 เหลือ ${days} วัน</span>`
+      :urg==='yellow'?`<span style="font-size:.65rem;font-weight:700;background:#fefce8;color:#854d0e;padding:.1rem .4rem;border-radius:.4rem">🟡 เหลือ ${days} วัน</span>`
+      :`<span style="font-size:.65rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">🟢 เหลือ ${days} วัน</span>`;
+    const thumbSrc=rep.composite_img||rep.image_front||rep.image_overview||rep.image_expiry||'';
+    const thumbHtml=thumbSrc
+      ?`<img src="${thumbSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:.65rem;flex-shrink:0;border:1.5px solid #86efac" crossorigin="anonymous">`
+      :`<div style="width:64px;height:64px;border-radius:.65rem;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid #86efac">📊</div>`;
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1.5px solid #86efac;border-radius:.9rem;padding:.75rem .85rem;display:flex;flex-direction:column;gap:.6rem';
+    div.innerHTML=`
+      <div style="display:flex;gap:.65rem;align-items:flex-start">
+        ${thumbHtml}
+        <div style="min-width:0;flex:1">
+          <p style="font-size:.86rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p>
+          <p style="font-size:.75rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.brand_name||''}</p>
+          <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">
+            <span style="font-size:.68rem;color:#9ca3af">📅 ${expLabel}</span>
+            ${urgChip}
+          </div>
+          <p style="font-size:.82rem;font-weight:700;color:#15803d;margin-top:.2rem">📊 ${rep.qty_req_value} ชิ้น</p>
+          ${rep.qty_req_requester?`<p style="font-size:.72rem;color:#6b7280;margin-top:.1rem">👤 ${rep.qty_req_requester}</p>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:.4rem;justify-content:flex-end;border-top:1px solid #bbf7d0;padding-top:.5rem">
+        <button onclick="rejectQtyReq('${rep.id}')" style="font-size:.75rem;padding:.3rem .85rem;border-radius:.65rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button>
+        <button onclick="confirmAdminQty('${rep.id}')" style="font-size:.75rem;padding:.3rem .9rem;border-radius:.65rem;background:#16a34a;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยัน</button>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+// ══════════════════════════════════════════
+// ADMIN: EXPIRED ITEMS IN SETTINGS
+// ══════════════════════════════════════════
+function renderExpiredInSettings(){
+  const expired=_reports.filter(r=>isExpiredFn(r.expiry_month,r.expiry_year,r.expiry_day||null));
+  const el=document.getElementById('expiredSettingsList');
+  if(!el) return;
+  if(!expired.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีสินค้าหมดอายุ</p>';return;}
+  el.innerHTML='';
+  expired.forEach(rep=>{
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+    const thumbSrc=rep.composite_img||rep.image_front||rep.image_overview||rep.image_expiry||'';
+    const thumbHtml=thumbSrc
+      ?`<img src="${thumbSrc}" style="width:56px;height:56px;object-fit:cover;border-radius:.6rem;flex-shrink:0;border:1.5px solid #fca5a5" crossorigin="anonymous">`
+      :`<div style="width:56px;height:56px;border-radius:.6rem;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;border:1.5px solid #fca5a5">⏰</div>`;
+    const claimBadge=rep.claim_status?'<span style="font-size:.65rem;font-weight:700;background:#dcfce7;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">✅ เคลมแล้ว</span>':'<span style="font-size:.65rem;font-weight:700;background:#fef9c3;color:#a16207;padding:.1rem .4rem;border-radius:.4rem">⏳ รอดำเนินการ</span>';
+    const sentBadge=rep.sent_claim?'<span style="font-size:.65rem;font-weight:700;background:#ede9fe;color:#7c3aed;padding:.1rem .4rem;border-radius:.4rem">📨 ส่งเคลมแล้ว</span>':'';
+    const soldBadgeExp=rep.sold_out?'<span style="font-size:.65rem;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:.1rem .4rem;border-radius:.4rem">📦 ขายหมดแล้ว</span>':'';
+    const qtyBadgeExp=rep.remaining_quantity!=null?`<span style="font-size:.65rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">📊 ${rep.remaining_quantity} ชิ้น</span>`:'';
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1px solid #fca5a5;border-radius:.85rem;padding:.7rem .8rem;display:flex;flex-direction:column;gap:.5rem';
+    div.innerHTML=`
+      <div style="display:flex;gap:.55rem;align-items:flex-start">
+        ${thumbHtml}
+        <div style="min-width:0;flex:1">
+          <p style="font-size:.84rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p>
+          <p style="font-size:.73rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.brand_name||''}</p>
+          <p style="font-size:.68rem;color:#9f1239;font-weight:600;margin-top:.15rem">⏰ หมดอายุ: ${expLabel}</p>
+          ${rep.reporter_name?`<p style="font-size:.68rem;color:#9ca3af;margin-top:.1rem">👤 ${rep.reporter_name}</p>`:''}
+          <div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.3rem">${claimBadge}${sentBadge}${soldBadgeExp}${qtyBadgeExp}${rep.quantity?`<span style="font-size:.65rem;font-weight:600;background:#eff6ff;color:#1d4ed8;padding:.1rem .4rem;border-radius:.4rem">📦 ${rep.quantity} ชิ้น</span>`:''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.35rem;justify-content:flex-end;border-top:1px solid #fef2f2;padding-top:.45rem;flex-wrap:wrap">
+        ${!rep.claim_status?`<button onclick="toggleClaimFromSettings('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#22c55e;color:#fff;font-weight:700;border:none;cursor:pointer">✓ เคลมแล้ว</button>`
+          :`<button onclick="toggleClaimFromSettings('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">↩ ยกเลิก</button>`}
+        ${!rep.sent_claim?`<button onclick="toggleSentFromSettings('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#7c3aed;color:#fff;font-weight:700;border:none;cursor:pointer">📨 ส่งเคลม</button>`
+          :`<button onclick="toggleSentFromSettings('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#f3f4f6;color:#7c3aed;font-weight:700;border:none;cursor:pointer">↩ ยกเลิก</button>`}
+        <button onclick="confirmDeleteReport('${rep.id}')" style="font-size:.73rem;padding:.28rem .7rem;border-radius:.6rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer">🗑 ลบ</button>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+async function toggleClaimFromSettings(id){
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  const newStatus=rep.claim_status?0:1;
+  await db.ref('reports/'+id).update({claim_status:newStatus,claimed_at:newStatus?TS():null});
+  rep.claim_status=newStatus; rep.claimed_at=newStatus?_tsToStr(Date.now()):null;
+  calcStats(); updateStats(); renderExpiredInSettings();
+  toast(newStatus?'บันทึก: เคลมแล้ว ✅':'ยกเลิกสถานะเคลมแล้ว');
+}
+async function toggleSentFromSettings(id){
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  const newVal=rep.sent_claim?0:1;
+  await db.ref('reports/'+id).update({sent_claim:newVal,sent_at:newVal?TS():null});
+  rep.sent_claim=newVal; rep.sent_at=newVal?_tsToStr(Date.now()):null;
+  calcStats(); updateStats(); renderExpiredInSettings();
+  toast(newVal?'ส่งเคลมบริษัทแล้ว 📨':'ยกเลิกการส่งเคลม');
+}
+// ══════════════════════════════════════════
+// STAFF SOLD-OUT REQUEST
+// ══════════════════════════════════════════
+let _pendingSoldOutId=null;
+function openStaffSoldOutDialog(id){
+  _pendingSoldOutId=id;
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  document.getElementById('staffSoldTitle').textContent=`${rep.branch_name} · ${rep.brand_name}`;
+  document.getElementById('staffSoldName').value='';
+  document.getElementById('staffSoldModal').style.display='flex';
+  setTimeout(()=>document.getElementById('staffSoldName').focus(),100);
+}
+function closeStaffSoldOutDialog(){document.getElementById('staffSoldModal').style.display='none';_pendingSoldOutId=null;}
+async function submitStaffSoldOutReq(){
+  const name=document.getElementById('staffSoldName').value.trim();
+  if(!name){document.getElementById('staffSoldName').style.borderColor='#dc2626';return;}
+  if(!_pendingSoldOutId) return;
+  await db.ref('reports/'+_pendingSoldOutId).update({sold_out_requested:1,sold_out_requester:name});
+  const rep=_reports.find(r=>r.id===_pendingSoldOutId);
+  if(rep){rep.sold_out_requested=1;rep.sold_out_requester=name;}
+  closeStaffSoldOutDialog();
+  calcStats(); updateStats(); renderReports();
+  toast('แจ้งขายหมดแล้ว — รอ Admin ยืนยัน 🔔');
+}
+function confirmAdminSoldOut(id){
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  const who=rep.sold_out_requester||'พนักงาน';
+  showConfirm('ยืนยันขายหมดแล้ว?',`${rep.branch_name} · ${rep.brand_name}\nคำขอจาก: ${who}`,async()=>{
+    await db.ref('reports/'+id).update({sold_out:1,sold_out_requested:null,sold_out_requester:null});
+    const r=_reports.find(x=>x.id===id);
+    if(r){r.sold_out=1;r.sold_out_requested=null;r.sold_out_requester=null;}
+    calcStats(); updateStats(); renderReports(); renderPendingSoldOutReqs();
+    toast('ยืนยันขายหมดแล้ว 📦');
+  },'📦','#1d4ed8');
+}
+async function rejectSoldOutReq(id){
+  await db.ref('reports/'+id).update({sold_out_requested:null,sold_out_requester:null});
+  const rep=_reports.find(r=>r.id===id);
+  if(rep){rep.sold_out_requested=null;rep.sold_out_requester=null;}
+  calcStats(); updateStats(); renderReports(); renderPendingSoldOutReqs();
+  toast('ปฏิเสธคำขอขายหมดแล้ว');
+}
+function renderPendingSoldOutReqs(){
+  const pending=_reports.filter(r=>r.sold_out_requested&&!r.sold_out);
+  const el=document.getElementById('pendingSoldOutList');
+  if(!el) return;
+  if(!pending.length){el.innerHTML='<p style="font-size:.82rem;color:#9ca3af;text-align:center;padding:.5rem 0">ไม่มีคำขอ</p>';return;}
+  el.innerHTML='';
+  pending.forEach(rep=>{
+    const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+    const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+    const urg=getUrgency(rep);
+    const days=daysUntilExpiry(rep.expiry_month,rep.expiry_year,rep.expiry_day||1);
+    const urgChip=urg==='expired'
+      ?'<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.1rem .4rem;border-radius:.4rem">หมดอายุแล้ว</span>'
+      :urg==='red'?`<span style="font-size:.65rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.1rem .4rem;border-radius:.4rem">🔴 เหลือ ${days} วัน</span>`
+      :urg==='yellow'?`<span style="font-size:.65rem;font-weight:700;background:#fefce8;color:#854d0e;padding:.1rem .4rem;border-radius:.4rem">🟡 เหลือ ${days} วัน</span>`
+      :`<span style="font-size:.65rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.1rem .4rem;border-radius:.4rem">🟢 เหลือ ${days} วัน</span>`;
+    const thumbSrc=rep.composite_img||rep.image_front||rep.image_overview||rep.image_expiry||'';
+    const thumbHtml=thumbSrc
+      ?`<img src="${thumbSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:.65rem;flex-shrink:0;border:1.5px solid #93c5fd" crossorigin="anonymous">`
+      :`<div style="width:64px;height:64px;border-radius:.65rem;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid #93c5fd">📦</div>`;
+    const extraParts=[];
+    if(rep.quantity) extraParts.push(`<span style="font-size:.68rem;color:#1d4ed8;font-weight:600">📦 ${rep.quantity} ชิ้น</span>`);
+    if(rep.note) extraParts.push(`<span style="font-size:.68rem;color:#6b7280">📝 ${rep.note}</span>`);
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1.5px solid #93c5fd;border-radius:.9rem;padding:.75rem .85rem;display:flex;flex-direction:column;gap:.6rem';
+    div.innerHTML=`
+      <div style="display:flex;gap:.65rem;align-items:flex-start">
+        ${thumbHtml}
+        <div style="min-width:0;flex:1">
+          <p style="font-size:.86rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p>
+          <p style="font-size:.75rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.brand_name||''}</p>
+          <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;margin-top:.25rem">
+            <span style="font-size:.68rem;color:#9ca3af">📅 ${expLabel}</span>
+            ${urgChip}
+          </div>
+          ${rep.sold_out_requester?`<p style="font-size:.73rem;color:#1d4ed8;font-weight:700;margin-top:.25rem">👤 ${rep.sold_out_requester}</p>`:''}
+          ${extraParts.length?`<div style="display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.2rem">${extraParts.join('')}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:.4rem;justify-content:flex-end;border-top:1px solid #dbeafe;padding-top:.5rem">
+        <button onclick="rejectSoldOutReq('${rep.id}')" style="font-size:.75rem;padding:.3rem .85rem;border-radius:.65rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button>
+        <button onclick="confirmAdminSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .9rem;border-radius:.65rem;background:#1d4ed8;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยัน</button>
+      </div>`;
+    el.appendChild(div);
+  });
+}
 function renderPendingDeleteReqs(){
   const pending=_reports.filter(r=>r.delete_requested);
   const el=document.getElementById('pendingDeleteList');
