@@ -1568,9 +1568,10 @@ function renderReports(){
   if(chipClaim==='0')     r=r.filter(x=>!x.claim_status);
   if(chipClaim==='1')     r=r.filter(x=>x.claim_status);
   if(chipClaim==='sent')  r=r.filter(x=>x.sent_claim);
-  // Expired items are always hidden from main list (managed in Admin Settings)
+  // Expired items always hidden; sold-out items hidden by default, shown only when filter is 'sold'
   r=r.filter(x=>!isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
-  if(chipClaim==='sold')  r=r.filter(x=>x.sold_out);
+  if(chipClaim==='sold') r=r.filter(x=>x.sold_out);
+  else r=r.filter(x=>!x.sold_out);
   if(chipUrgency)         r=r.filter(x=>getUrgency(x)===chipUrgency);
   if(chipDeleteReq)       r=r.filter(x=>x.delete_requested);
   const list=document.getElementById('reportList');
@@ -2017,6 +2018,16 @@ async function submitAdminSoldOutConfirm(){
   rep.sold_out=1;rep.sold_out_requested=null;rep.sold_out_requester=name;
   calcStats();updateStats();renderReports();renderPendingSoldOutReqs();renderExpiredInSettings();renderSoldOutInSettings();
   toast('บันทึกขายหมดแล้ว 📦');
+  goTo('settings');
+  setTimeout(()=>{
+    const card=document.getElementById('soldOutSettingsCard');
+    if(card&&card.style.display!=='none'){
+      const body=document.getElementById('soldOutSettingsList');
+      const arrow=document.getElementById('soldOutSettings-arrow');
+      if(body&&body.style.display==='none'){body.style.display='flex';if(arrow)arrow.style.transform='rotate(0deg)';}
+      card.scrollIntoView({behavior:'smooth'});
+    }
+  },200);
 }
 function openStaffSoldOutDialog(id){
   _pendingSoldOutId=id;
