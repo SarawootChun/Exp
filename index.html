@@ -276,6 +276,27 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
     <p class="text-green-600 text-sm mt-1 mb-4">ทีมงานได้รับข้อมูลเรียบร้อย</p>
     <button onclick="resetForm()" class="mbtn px-6 py-2.5 rounded-xl text-sm">➕ ส่งรายงานใหม่</button>
   </div>
+
+  <!-- REQUEST DELETE SECTION -->
+  <div class="card" style="padding:0;overflow:hidden;border:1.5px solid #fee2e2">
+    <button id="delreq-toggle" onclick="toggleDelReqPanel()"
+      style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:linear-gradient(135deg,#fff1f2,#fee2e2);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <span style="font-size:1.2rem">🗑</span>
+        <span style="font-weight:700;font-size:.92rem;color:#dc2626">แจ้งขอลบรายการ</span>
+        <span style="font-size:.72rem;color:#f87171;background:#fee2e2;padding:.1rem .5rem;border-radius:99px;font-weight:600">Admin ต้องยืนยัน</span>
+      </div>
+      <span id="delreq-arrow" style="font-size:1rem;color:#f87171;transition:transform .25s">▼</span>
+    </button>
+    <div id="delreq-body" style="display:none;padding:.75rem 1rem 1rem">
+      <p style="font-size:.8rem;color:#6b7280;margin-bottom:.75rem">ค้นหารายการที่คุณส่งไว้ด้วยชื่อผู้ส่ง แล้วเลือกรายการที่ต้องการขอลบ</p>
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+        <input id="delreq-name" type="text" placeholder="ชื่อผู้ส่งรายงาน" style="flex:1;border:1.5px solid #e5e7eb;border-radius:.75rem;padding:.5rem .85rem;font-size:.85rem;outline:none">
+        <button onclick="searchMyReports()" style="padding:.5rem 1rem;border-radius:.75rem;background:#dc2626;color:#fff;font-weight:700;font-size:.82rem;border:none;cursor:pointer">ค้นหา</button>
+      </div>
+      <div id="delreq-list" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem"></div>
+    </div>
+  </div>
 </div>
 
 <!-- VIEW 2 : ADMIN DASHBOARD -->
@@ -311,6 +332,30 @@ select,input,textarea{appearance:none;-webkit-appearance:none}
         <p class="text-xs text-purple-400">📨 รอเคลม (ส่งแล้ว)</p>
         <p id="st-wait" class="text-3xl font-black text-purple-700">0</p>
       </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem">
+      <button onclick="setUrgencyFilter('green')" id="urg-g-btn"
+        style="padding:.6rem .3rem;border-radius:.85rem;border:1.5px solid #86efac;background:#f0fdf4;cursor:pointer;text-align:center;transition:box-shadow .15s">
+        <p style="font-size:.75rem;font-weight:700;color:#15803d">🟢 ปกติ</p>
+        <p id="st-urg-g" style="font-size:1.6rem;font-weight:900;color:#15803d;line-height:1.1">0</p>
+        <p style="font-size:.65rem;color:#86efac">&gt;35 วัน</p>
+      </button>
+      <button onclick="setUrgencyFilter('yellow')" id="urg-y-btn"
+        style="padding:.6rem .3rem;border-radius:.85rem;border:1.5px solid #fde68a;background:#fefce8;cursor:pointer;text-align:center;transition:box-shadow .15s">
+        <p style="font-size:.75rem;font-weight:700;color:#a16207">🟡 ใกล้หมด</p>
+        <p id="st-urg-y" style="font-size:1.6rem;font-weight:900;color:#a16207;line-height:1.1">0</p>
+        <p style="font-size:.65rem;color:#fbbf24">≤35 วัน</p>
+      </button>
+      <button onclick="setUrgencyFilter('red')" id="urg-r-btn"
+        style="padding:.6rem .3rem;border-radius:.85rem;border:1.5px solid #fca5a5;background:#fff1f2;cursor:pointer;text-align:center;transition:box-shadow .15s">
+        <p style="font-size:.75rem;font-weight:700;color:#9f1239">🔴 เร่งด่วน</p>
+        <p id="st-urg-r" style="font-size:1.6rem;font-weight:900;color:#9f1239;line-height:1.1">0</p>
+        <p style="font-size:.65rem;color:#fca5a5">≤15 วัน</p>
+      </button>
+    </div>
+    <div id="delete-req-banner" style="display:none;background:#fff1f2;border:1.5px solid #fca5a5;border-radius:.85rem;padding:.6rem 1rem;display:none;align-items:center;gap:.5rem;cursor:pointer" onclick="setDeleteReqFilter()">
+      <span style="font-size:1rem">⚠️</span>
+      <span style="font-size:.82rem;font-weight:700;color:#9f1239">มีคำขอลบ <span id="st-del-req">0</span> รายการ — แตะเพื่อดู</span>
     </div>
 
     <div class="card">
@@ -549,12 +594,17 @@ function stopRealtimeReports(){
   if(_rtListener){db.ref('reports').off('value',_rtListener);_rtListener=null;}
 }
 function calcStats(){
+  const notExpired=_reports.filter(r=>!isExpiredFn(r.expiry_month,r.expiry_year,r.expiry_day||null));
   _stats={
     total:_reports.length,
     expired:_reports.filter(r=>isExpiredFn(r.expiry_month,r.expiry_year,r.expiry_day||null)).length,
     claimed:_reports.filter(r=>r.claim_status).length,
     unclaimed:_reports.filter(r=>!r.claim_status&&isExpiredFn(r.expiry_month,r.expiry_year,r.expiry_day||null)).length,
     sent_claim:_reports.filter(r=>r.sent_claim).length,
+    urg_green:notExpired.filter(r=>daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1)>35).length,
+    urg_yellow:notExpired.filter(r=>{const d=daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1);return d>=0&&d<=35;}).length,
+    urg_red:notExpired.filter(r=>{const d=daysUntilExpiry(r.expiry_month,r.expiry_year,r.expiry_day||1);return d>=0&&d<=15;}).length,
+    delete_req:_reports.filter(r=>r.delete_requested).length,
   };
 }
 async function loadStats(){calcStats();}
@@ -582,7 +632,7 @@ async function seedIfEmpty(){
 // ══════════════════════════════════════════
 let isAdmin=false, isOwner=false;
 let imgData={i1:null,i2:null,i3:null};
-let chipBranches=new Set(), chipBrands=new Set(), chipGroups=new Set(), chipClaim='', chipExp='';
+let chipBranches=new Set(), chipBrands=new Set(), chipGroups=new Set(), chipClaim='', chipExp='', chipUrgency='', chipDeleteReq=false;
 
 // ══════════════════════════════════════════
 // CLOCK
@@ -639,6 +689,11 @@ async function showDash(){
   if(_reports.length){buildFilters();calcStats();updateStats();renderReports();}
   // Start realtime listener — updates automatically whenever data changes
   startRealtimeReports();
+  // Also do an explicit initial load in case listener is slow (fallback)
+  if(!_reports.length){
+    try{await loadReports();buildFilters();calcStats();updateStats();renderReports();}
+    catch(e){toast('โหลดข้อมูลไม่สำเร็จ: '+e.message,'red');}
+  }
 }
 
 // ══════════════════════════════════════════
@@ -784,6 +839,33 @@ function isExpiredFn(m,y,d){
   if(y===ny&&m<nm) return true;
   if(y===ny&&m===nm&&d!=null&&d<=nd) return true;
   return false;
+}
+function daysUntilExpiry(m,y,d){
+  const n=nowTH();
+  const expDate=new Date(y,m-1,d||1);
+  const nowDate=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  return Math.ceil((expDate-nowDate)/(1000*60*60*24));
+}
+function getUrgency(rep){
+  if(isExpiredFn(rep.expiry_month,rep.expiry_year,rep.expiry_day||null)) return 'expired';
+  const days=daysUntilExpiry(rep.expiry_month,rep.expiry_year,rep.expiry_day||1);
+  if(days<=15) return 'red';
+  if(days<=35) return 'yellow';
+  return 'green';
+}
+function setUrgencyFilter(v){
+  chipUrgency=(chipUrgency===v)?'':v;
+  ['green','yellow','red'].forEach(c=>{
+    const btn=document.getElementById('urg-'+c[0]+'-btn');
+    if(btn) btn.style.boxShadow=chipUrgency===c?'0 0 0 3px rgba(0,0,0,0.25)':'';
+  });
+  renderReports();
+}
+function setDeleteReqFilter(){
+  chipDeleteReq=!chipDeleteReq;
+  const banner=document.getElementById('delete-req-banner');
+  if(banner) banner.style.outline=chipDeleteReq?'2px solid #dc2626':'';
+  renderReports();
 }
 function updateStatus(){
   const m=parseInt(document.getElementById('expiryM').value);
@@ -1197,6 +1279,12 @@ function updateStats(){
   document.getElementById('st-urg-g').textContent=_stats.urg_green||0;
   document.getElementById('st-urg-y').textContent=_stats.urg_yellow||0;
   document.getElementById('st-urg-r').textContent=_stats.urg_red||0;
+  const delBanner=document.getElementById('delete-req-banner');
+  const delCount=_stats.delete_req||0;
+  if(delBanner){
+    if(delCount>0){delBanner.style.display='flex';document.getElementById('st-del-req').textContent=delCount;}
+    else{delBanner.style.display='none';}
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1329,6 +1417,7 @@ function renderReports(){
   if(chipExp==='0')       r=r.filter(x=>!isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
   if(chipClaim==='sold')  r=r.filter(x=>x.sold_out);
   if(chipUrgency)         r=r.filter(x=>getUrgency(x)===chipUrgency);
+  if(chipDeleteReq)       r=r.filter(x=>x.delete_requested);
   const list=document.getElementById('reportList');
   const empty=document.getElementById('emptyMsg');
   list.innerHTML='';
@@ -1347,6 +1436,7 @@ function renderReports(){
       :urg==='yellow'?`<span style="font-size:.7rem;font-weight:700;background:#fefce8;color:#854d0e;padding:.15rem .5rem;border-radius:.5rem">🟡 เหลือ ${days} วัน</span>`
       :`<span style="font-size:.7rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.15rem .5rem;border-radius:.5rem">🟢 เหลือ ${days} วัน</span>`;
     const soldBadge=rep.sold_out?'<span style="font-size:.72rem;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:.15rem .5rem;border-radius:.5rem">📦 ขายหมดแล้ว</span>':'';
+    const delReqHtml=rep.delete_requested?`<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:.7rem;padding:.45rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem"><div><span style="font-size:.78rem;font-weight:700;color:#9f1239">⚠️ ขอลบ</span>${rep.delete_requester?`<span style="font-size:.72rem;color:#9ca3af"> — ${rep.delete_requester}</span>`:''}</div><div style="display:flex;gap:.35rem"><button onclick="confirmAdminDelete('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#dc2626;color:#fff;font-weight:700;border:none;cursor:pointer">✓ ยืนยันลบ</button><button onclick="rejectDeleteReq('${rep.id}')" style="font-size:.73rem;padding:.25rem .65rem;border-radius:.6rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">✕ ปฏิเสธ</button></div></div>`:'';
     const soldBtn=rep.sold_out
       ?`<button onclick="toggleSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">↩ ยังมีสินค้า</button>`
       :`<button onclick="toggleSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#1d4ed8;color:#fff;font-weight:700;border:none;cursor:pointer">📦 ขายหมดแล้ว</button>`;
@@ -1361,7 +1451,7 @@ function renderReports(){
     const reporterHtml=rep.reporter_name?`<span style="font-size:.72rem;color:#6b7280">👤 ${rep.reporter_name}</span>`:'';
     const card=document.createElement('div');
     card.className='card';
-    card.style.cssText='display:flex;flex-direction:column;gap:.65rem';
+    card.style.cssText='display:flex;flex-direction:column;gap:.65rem'+(rep.delete_requested?';border:1.5px solid #fca5a5':'');
     card.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div style="min-width:0;flex:1">
@@ -1399,6 +1489,7 @@ function renderReports(){
       <div style="display:flex;justify-content:flex-end">
         ${soldBtn}
       </div>
+      ${delReqHtml}
       <div style="display:flex;align-items:center;justify-content:space-between">
         <p style="font-size:.7rem;color:#d1d5db">ส่งเมื่อ ${fmtDate(rep.submitted_at)}</p>
         <button onclick="confirmDeleteReport('${rep.id}')"
@@ -1500,7 +1591,58 @@ async function deleteReport(id){
   await loadStats(); updateStats(); renderReports();
   toast('ลบรายการแล้ว');
 }
+function confirmAdminDelete(id){
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  const who=rep.delete_requester||'พนักงาน';
+  showConfirm('ยืนยันลบรายการ?',`${rep.branch_name} · ${rep.brand_name}\nคำขอจาก: ${who}`,()=>deleteReport(id),'🗑','#dc2626');
+}
+async function rejectDeleteReq(id){
+  await db.ref('reports/'+id).update({delete_requested:null,delete_requester:null});
+  const rep=_reports.find(r=>r.id===id);
+  if(rep){rep.delete_requested=null;rep.delete_requester=null;}
+  calcStats(); updateStats(); renderReports();
+  toast('ปฏิเสธคำขอลบแล้ว');
+}
 function openLB(src){document.getElementById('lbImg').src=src;document.getElementById('lb').style.display='flex';}
+
+// ══════════════════════════════════════════
+// STAFF DELETE REQUEST
+// ══════════════════════════════════════════
+function toggleDelReqPanel(){
+  const body=document.getElementById('delreq-body');
+  const arrow=document.getElementById('delreq-arrow');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  arrow.style.transform=isOpen?'':'rotate(180deg)';
+}
+async function searchMyReports(){
+  const name=document.getElementById('delreq-name').value.trim();
+  const list=document.getElementById('delreq-list');
+  if(!name){list.innerHTML='<p style="font-size:.8rem;color:#9ca3af">กรุณาระบุชื่อผู้ส่ง</p>';return;}
+  list.innerHTML='<p style="font-size:.8rem;color:#9ca3af">⏳ กำลังค้นหา...</p>';
+  try{
+    const snap=await db.ref('reports').orderByChild('reporter_name').equalTo(name).once('value');
+    if(!snap.exists()){list.innerHTML='<p style="font-size:.8rem;color:#9ca3af">ไม่พบรายการที่ส่งโดย "'+name+'"</p>';return;}
+    const items=[];
+    snap.forEach(c=>{const d=c.val();if(!d.delete_requested) items.push({id:c.key,...d});});
+    if(!items.length){list.innerHTML='<p style="font-size:.8rem;color:#6b7280">ไม่พบรายการที่ยังไม่ได้ขอลบ</p>';return;}
+    items.sort((a,b)=>(b.submitted_at||0)-(a.submitted_at||0));
+    list.innerHTML='';
+    items.forEach(rep=>{
+      const expD=rep.expiry_day?`${rep.expiry_day} `:'';
+      const expLabel=`${expD}${THM[rep.expiry_month]||''} ${(rep.expiry_year||0)+543}`;
+      const div=document.createElement('div');
+      div.style.cssText='background:#f9fafb;border:1px solid #e5e7eb;border-radius:.75rem;padding:.6rem .8rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem';
+      div.innerHTML=`<div style="min-width:0;flex:1"><p style="font-size:.82rem;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rep.branch_name||''}</p><p style="font-size:.72rem;color:#6b7280">${rep.brand_name||''} · ${expLabel}</p></div><button onclick="requestDeleteReport('${rep.id}','${name.replace(/'/g,"\\'")}')" style="font-size:.73rem;padding:.3rem .7rem;border-radius:.6rem;background:#fee2e2;color:#dc2626;font-weight:700;border:1px solid #fca5a5;cursor:pointer;flex-shrink:0">แจ้งลบ</button>`;
+      list.appendChild(div);
+    });
+  }catch(e){list.innerHTML='<p style="font-size:.8rem;color:#dc2626">เกิดข้อผิดพลาด: '+e.message+'</p>';}
+}
+async function requestDeleteReport(id,requesterName){
+  await db.ref('reports/'+id).update({delete_requested:1,delete_requester:requesterName});
+  toast('แจ้งขอลบแล้ว — รอ Admin ยืนยัน');
+  await searchMyReports();
+}
 
 // ══════════════════════════════════════════
 // SETTINGS — BRANCHES
