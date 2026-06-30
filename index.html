@@ -532,9 +532,21 @@ async function loadGroups(){
 async function loadReports(){
   const s=await db.ref('reports').once('value');
   const arr=_snapToArr(s);
-  // sort newest first client-side (avoids RTDB index requirement)
   arr.sort((a,b)=>(b.submitted_at||0)-(a.submitted_at||0));
   _reports=arr.slice(0,500);
+}
+let _rtListener=null;
+function startRealtimeReports(){
+  if(_rtListener) return;
+  _rtListener=db.ref('reports').on('value',snap=>{
+    const arr=_snapToArr(snap);
+    arr.sort((a,b)=>(b.submitted_at||0)-(a.submitted_at||0));
+    _reports=arr.slice(0,500);
+    calcStats(); updateStats(); buildFilters(); renderReports();
+  });
+}
+function stopRealtimeReports(){
+  if(_rtListener){db.ref('reports').off('value',_rtListener);_rtListener=null;}
 }
 function calcStats(){
   _stats={
@@ -623,13 +635,10 @@ async function showDash(){
   document.getElementById('dashSection').style.display='block';
   const dy=document.getElementById('dl-year');
   if(dy.options.length<=1){const ny=nowTH().getFullYear();for(let y=ny-3;y<=ny+4;y++) dy.add(new Option(`${y+543}`,y));}
-  // Render existing cached reports immediately (no wait) → user sees data right away
+  // Render existing cached reports immediately
   if(_reports.length){buildFilters();calcStats();updateStats();renderReports();}
-  // Then reload fresh from RTDB in background
-  try{
-    await Promise.all([loadReports(),loadStats()]);
-    buildFilters(); updateStats(); renderReports();
-  }catch(e){toast('โหลดข้อมูลไม่สำเร็จ: '+e.message,'red');}
+  // Start realtime listener — updates automatically whenever data changes
+  startRealtimeReports();
 }
 
 // ══════════════════════════════════════════
@@ -669,6 +678,7 @@ async function tryRestoreSession(){
   }catch(e){_adminSession=null;localStorage.removeItem('adminSession');}
 }
 function logout(){
+  stopRealtimeReports();
   isAdmin=false; isOwner=false; _adminSession=null;
   localStorage.removeItem('adminSession');
   document.getElementById('adminBadge').style.display='none';
@@ -919,22 +929,30 @@ function buildComposite(srcs,note='',qty='',expiryLabel=''){
             ctx.restore();
           }
           if(note||qty||expiryLabel){
+            // Info bar: dark background
             ctx.fillStyle='#0f172a'; ctx.fillRect(0,CH_IMG,CW,INFO_H);
-            ctx.fillStyle='#fff'; ctx.font='bold 22px Sarabun,sans-serif';
+            // Logo in info bar — right side, vertically centred
+            const logoH2=INFO_H-10, logoW2=Math.round(logoH2*520/228);
+            const logoX2=CW-logoW2-PAD, logoY2=CH_IMG+5;
+            // Text area left of logo
+            ctx.fillStyle='#fff'; ctx.font='bold 20px Sarabun,sans-serif';
             let txt='';
             if(expiryLabel) txt+=`หมดอายุ: ${expiryLabel}`;
             if(expiryLabel&&(qty||note)) txt+='   ';
             if(qty) txt+=`จำนวน ${qty} ชิ้น`;
             if(qty&&note) txt+='  ';
             if(note) txt+=note;
-            ctx.fillText(txt,PAD*2,CH_IMG+38,CW-PAD*4);
+            ctx.fillText(txt,PAD*2,CH_IMG+INFO_H/2+1,logoX2-PAD*3);
+            _drawLogoOnCanvas(ctx,logoX2,logoY2,logoW2,logoH2,()=>{
+              res(cv.toDataURL('image/jpeg',QUALITY));
+            });
+          } else {
+            // No info bar: small watermark at bottom-right of image area
+            const logoW3=110, logoH3=Math.round(110*228/520);
+            _drawLogoOnCanvas(ctx,CW-logoW3-PAD,CH_IMG-logoH3-PAD,logoW3,logoH3,()=>{
+              res(cv.toDataURL('image/jpeg',QUALITY));
+            });
           }
-          // Draw logo watermark — bottom-right corner of image area
-          const logoW=140, logoH=Math.round(140*228/520);
-          const logoX=CW-logoW-PAD, logoY=CH_IMG-logoH-PAD;
-          _drawLogoOnCanvas(ctx,logoX,logoY,logoW,logoH,()=>{
-            res(cv.toDataURL('image/jpeg',QUALITY));
-          });
         }
       };
       img.onerror=()=>{loaded++;if(loaded===activeCells.length)res(null);};
@@ -1176,6 +1194,9 @@ function updateStats(){
   document.getElementById('st-exp').textContent=_stats.expired||0;
   document.getElementById('st-claimed').textContent=_stats.claimed||0;
   document.getElementById('st-wait').textContent=_stats.sent_claim||0;
+  document.getElementById('st-urg-g').textContent=_stats.urg_green||0;
+  document.getElementById('st-urg-y').textContent=_stats.urg_yellow||0;
+  document.getElementById('st-urg-r').textContent=_stats.urg_red||0;
 }
 
 // ══════════════════════════════════════════
@@ -1188,7 +1209,7 @@ function toggleFDD(id,e){
   document.querySelectorAll('.fdd-panel').forEach(p=>p.style.display='none');
   if(!isOpen) panel.style.display='block';
 }
-document.addEventListener('click',()=>document.querySelectorAll('.fdd-panel').forEach(p=>p.style.display='none'));
+document.addEventListener('click',e=>{if(!e.target.closest('.fdd-panel')&&!e.target.closest('.fdd-btn'))document.querySelectorAll('.fdd-panel').forEach(p=>p.style.display='none');});
 function _fddOpt(label,isSel,isCheckbox){
   const d=document.createElement('div');
   d.className='fdd-opt'+(isSel?' sel':'');
@@ -1242,12 +1263,12 @@ function buildFilters(){
   document.getElementById('lbl-group').textContent=chipGroups.size===0?'กลุ่มแบรนด์':`กลุ่มแบรนด์ (${chipGroups.size})`;
   document.getElementById('btn-group').classList.toggle('active',chipGroups.size>0);
   const cd=document.getElementById('fdd-claim'); cd.innerHTML='';
-  [['','ทั้งหมด'],['0','⏳ รอดำเนินการ'],['1','✅ เคลมแล้ว'],['sent','📨 ส่งเคลมแล้ว']].forEach(([v,lbl])=>{
+  [['','ทั้งหมด'],['0','⏳ รอดำเนินการ'],['1','✅ เคลมแล้ว'],['sent','📨 ส่งเคลมแล้ว'],['sold','📦 ขายหมดแล้ว']].forEach(([v,lbl])=>{
     const opt=_fddOpt(lbl,chipClaim===v,false);
     opt.onclick=e=>{e.stopPropagation();chipClaim=v;buildFilters();renderReports();};
     cd.appendChild(opt);
   });
-  const claimOpts=[['','ทั้งหมด'],['0','⏳ รอดำเนินการ'],['1','✅ เคลมแล้ว'],['sent','📨 ส่งเคลมแล้ว']];
+  const claimOpts=[['','ทั้งหมด'],['0','⏳ รอดำเนินการ'],['1','✅ เคลมแล้ว'],['sent','📨 ส่งเคลมแล้ว'],['sold','📦 ขายหมดแล้ว']];
   document.getElementById('lbl-claim').textContent=chipClaim===''?'สถานะเคลม':claimOpts.find(x=>x[0]===chipClaim)?.[1]||'สถานะเคลม';
   document.getElementById('btn-claim').classList.toggle('active',chipClaim!=='');
   const ed=document.getElementById('fdd-exp'); ed.innerHTML='';
@@ -1259,6 +1280,27 @@ function buildFilters(){
   });
   document.getElementById('lbl-exp').textContent=chipExp===''?'หมดอายุ':expOpts.find(x=>x[0]===chipExp)?.[1]||'หมดอายุ';
   document.getElementById('btn-exp').classList.toggle('active',chipExp!=='');
+}
+
+// ══════════════════════════════════════════
+// COMPOSITE BUILD QUEUE (build one at a time → prevents UI lock)
+// ══════════════════════════════════════════
+const _buildQ=[]; let _buildRunning=false;
+async function _drainBuildQ(){
+  if(_buildRunning) return; _buildRunning=true;
+  while(_buildQ.length){
+    const {id,urls,note,qty,expLabel,resolve}=_buildQ.shift();
+    if(!document.getElementById('comp-'+id)){resolve(null);continue;}
+    const du=await buildComposite(urls,note,qty,expLabel);
+    resolve(du);
+  }
+  _buildRunning=false;
+}
+function queueComposite(rep,expLabel){
+  return new Promise(resolve=>{
+    _buildQ.push({id:rep.id,urls:[rep.image_front,rep.image_overview,rep.image_expiry],note:rep.note||'',qty:rep.quantity??'',expLabel,resolve});
+    _drainBuildQ();
+  });
 }
 
 // ══════════════════════════════════════════
@@ -1285,6 +1327,8 @@ function renderReports(){
   if(chipClaim==='sent')  r=r.filter(x=>x.sent_claim);
   if(chipExp==='1')       r=r.filter(x=>isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
   if(chipExp==='0')       r=r.filter(x=>!isExpiredFn(x.expiry_month,x.expiry_year,x.expiry_day||null));
+  if(chipClaim==='sold')  r=r.filter(x=>x.sold_out);
+  if(chipUrgency)         r=r.filter(x=>getUrgency(x)===chipUrgency);
   const list=document.getElementById('reportList');
   const empty=document.getElementById('emptyMsg');
   list.innerHTML='';
@@ -1296,6 +1340,16 @@ function renderReports(){
     const isExp=isExpiredFn(rep.expiry_month,rep.expiry_year,rep.expiry_day||null);
     const expB=isExp?'<span class="bx bx-r">🔴 หมดอายุ</span>':'<span class="bx bx-g">🟢 ยังไม่หมดอายุ</span>';
     const clB=rep.claim_status?'<span class="bx bx-b">✅ เคลมแล้ว</span>':'<span class="bx bx-y">⏳ รอดำเนินการ</span>';
+    const urg=getUrgency(rep);
+    const days=daysUntilExpiry(rep.expiry_month,rep.expiry_year,rep.expiry_day||1);
+    const urgBadge=urg==='expired'?''
+      :urg==='red'?`<span style="font-size:.7rem;font-weight:700;background:#fee2e2;color:#9f1239;padding:.15rem .5rem;border-radius:.5rem">🔴 เหลือ ${days} วัน</span>`
+      :urg==='yellow'?`<span style="font-size:.7rem;font-weight:700;background:#fefce8;color:#854d0e;padding:.15rem .5rem;border-radius:.5rem">🟡 เหลือ ${days} วัน</span>`
+      :`<span style="font-size:.7rem;font-weight:700;background:#f0fdf4;color:#15803d;padding:.15rem .5rem;border-radius:.5rem">🟢 เหลือ ${days} วัน</span>`;
+    const soldBadge=rep.sold_out?'<span style="font-size:.72rem;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:.15rem .5rem;border-radius:.5rem">📦 ขายหมดแล้ว</span>':'';
+    const soldBtn=rep.sold_out
+      ?`<button onclick="toggleSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#f3f4f6;color:#374151;font-weight:700;border:none;cursor:pointer">↩ ยังมีสินค้า</button>`
+      :`<button onclick="toggleSoldOut('${rep.id}')" style="font-size:.75rem;padding:.3rem .8rem;border-radius:.7rem;background:#1d4ed8;color:#fff;font-weight:700;border:none;cursor:pointer">📦 ขายหมดแล้ว</button>`;
     let sentBadges='';
     if(rep.sent_claim){sentBadges='<span class="bx bx-p">📨 ส่งเคลมบริษัทแล้ว</span>';if(!rep.claim_status)sentBadges+=' <span class="bx bx-o">⏳ รอเคลม</span>';}
     const clBtn=rep.claim_status
@@ -1318,6 +1372,8 @@ function renderReports(){
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem;flex-shrink:0">
           ${expB}
           <span style="font-size:.72rem;color:#9ca3af">${expLabel}</span>
+          ${urgBadge}
+          ${soldBadge}
         </div>
       </div>
       <div id="comp-${rep.id}" style="width:100%;background:#1e293b;border-radius:.85rem;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.8rem;min-height:72px">⏳ กำลังโหลดรูป...</div>
@@ -1340,6 +1396,9 @@ function renderReports(){
         <div>${sentBadges}${rep.sent_at?`<p style="font-size:.7rem;color:#9ca3af;margin-top:.1rem">ส่ง: ${fmtDate(rep.sent_at)}</p>`:''}</div>
         ${sentBtn}
       </div>
+      <div style="display:flex;justify-content:flex-end">
+        ${soldBtn}
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <p style="font-size:.7rem;color:#d1d5db">ส่งเมื่อ ${fmtDate(rep.submitted_at)}</p>
         <button onclick="confirmDeleteReport('${rep.id}')"
@@ -1361,7 +1420,7 @@ function renderReports(){
           const cached=_compCache[cacheKey];
           compEl.innerHTML=`<img src="${cached}" onclick="openLB('${cached}')" style="width:100%;height:auto;object-fit:contain;cursor:zoom-in;display:block" title="คลิกเพื่อขยาย">`;
         } else {
-          buildComposite(urls,rep.note||'',rep.quantity??'',expLabel).then(dataURL=>{
+          queueComposite(rep,expLabel).then(dataURL=>{
             const el=document.getElementById(`comp-${rep.id}`); if(!el) return;
             if(!dataURL){el.innerHTML='<span style="color:#d1d5db">ไม่มีรูปภาพ</span>';return;}
             _compCache[cacheKey]=dataURL;
@@ -1423,6 +1482,13 @@ async function sentClaimAll(){
   await Promise.all(targets.map(r=>db.ref('reports/'+r.id).update({sent_claim:1,sent_at:TS()})));
   await Promise.all([loadReports(),loadStats()]); updateStats(); renderReports();
   toast(`ส่งเคลมบริษัทแล้ว ${targets.length} รายการ 📨`);
+}
+async function toggleSoldOut(id){
+  const rep=_reports.find(r=>r.id===id); if(!rep) return;
+  const newVal=rep.sold_out?0:1;
+  await db.ref('reports/'+id).update({sold_out:newVal});
+  rep.sold_out=newVal;
+  calcStats(); updateStats(); renderReports();
 }
 function confirmDeleteReport(id){
   const rep=_reports.find(r=>r.id===id); if(!rep) return;
